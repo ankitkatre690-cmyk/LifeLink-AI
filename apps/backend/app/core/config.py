@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from urllib.parse import quote_plus
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -35,14 +35,16 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
+        password = quote_plus(self.POSTGRES_PASSWORD)
+
         return (
             f"postgresql+psycopg://"
             f"{self.POSTGRES_USER}:"
-            f"{self.POSTGRES_PASSWORD}@"
+            f"{password}@"
             f"{self.POSTGRES_SERVER}:"
             f"{self.POSTGRES_PORT}/"
             f"{self.POSTGRES_DB}"
-        )
+       )
 
 
 @lru_cache
