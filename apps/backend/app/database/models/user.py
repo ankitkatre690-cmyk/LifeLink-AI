@@ -55,3 +55,10 @@ class User(UUIDMixin, TimestampMixin, Base):
         "Role",
         back_populates="users",
     )
+
+    citizen_profile = relationship(
+        "CitizenProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )

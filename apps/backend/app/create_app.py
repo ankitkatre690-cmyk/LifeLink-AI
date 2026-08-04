@@ -1,38 +1,21 @@
 from fastapi import FastAPI
 
-from app.api.v1.api import router
-from app.core.config import settings
+from app.modules.auth.router import router as auth_router
+from app.modules.citizen.router import router as citizen_router
 
-
-def create_app() -> FastAPI:
+def create_app():
 
     app = FastAPI(
-        title=settings.PROJECT_NAME,
-        version=settings.PROJECT_VERSION,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        title="LifeLink AI",
+        version="1.0.0",
     )
-
-    @app.get("/")
-    async def root():
-
-        return {
-            "project": settings.PROJECT_NAME,
-            "version": settings.PROJECT_VERSION,
-            "status": "running",
-        }
-
-    @app.get("/health")
-    async def health():
-
-        return {
-            "status": "healthy",
-            "database": "connected",
-        }
 
     app.include_router(
-        router,
-        prefix=settings.API_V1_PREFIX,
+        auth_router,
+        prefix="/api/v1",
     )
-
+    app.include_router(
+    citizen_router,
+    prefix="/api/v1",
+  )
     return app
