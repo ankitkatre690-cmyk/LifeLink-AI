@@ -1,0 +1,85 @@
+from sqlalchemy.orm import Session
+
+from app.database.models.family_group import FamilyGroup
+from app.database.models.family_member import FamilyMember
+
+
+class FamilyRepository:
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    # ----------------------------------
+    # Family Group
+    # ----------------------------------
+
+    def create_family(self, family: FamilyGroup):
+
+        self.db.add(family)
+        self.db.commit()
+        self.db.refresh(family)
+
+        return family
+
+    def get_family_by_creator(self, user_id):
+
+        return (
+            self.db.query(FamilyGroup)
+            .filter(FamilyGroup.created_by == user_id)
+            .first()
+        )
+
+    def get_family_by_id(self, family_id):
+
+        return (
+            self.db.query(FamilyGroup)
+            .filter(FamilyGroup.id == family_id)
+            .first()
+        )
+
+    def update(self):
+
+        self.db.commit()
+
+    def delete_family(self, family: FamilyGroup):
+
+        self.db.delete(family)
+        self.db.commit()
+
+    # ----------------------------------
+    # Family Members
+    # ----------------------------------
+
+    def add_member(self, member: FamilyMember):
+
+        self.db.add(member)
+        self.db.commit()
+        self.db.refresh(member)
+
+        return member
+
+    def get_member(self, family_id, user_id):
+
+        return (
+            self.db.query(FamilyMember)
+            .filter(
+                FamilyMember.family_group_id == family_id,
+                FamilyMember.user_id == user_id,
+            )
+            .first()
+        )
+
+    def get_members(self, family_id):
+
+        return (
+            self.db.query(FamilyMember)
+            .filter(
+                FamilyMember.family_group_id == family_id
+            )
+            .all()
+        )
+
+    def delete_member(self, member: FamilyMember):
+
+        self.db.delete(member)
+        self.db.commit()
