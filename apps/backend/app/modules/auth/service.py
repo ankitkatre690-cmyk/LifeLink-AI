@@ -10,10 +10,7 @@ from app.modules.auth.exceptions import (
     InvalidRoleError,
 )
 from app.modules.auth.repository import AuthRepository
-from app.modules.auth.schemas import (
-    LoginRequest,
-    RegisterRequest,
-)
+from app.modules.auth.schemas import RegisterRequest
 
 
 class AuthService:
@@ -45,9 +42,10 @@ class AuthService:
             role_id=role.id,
             email=request.email,
             phone=request.phone,
-            password_hash=hash_password(request.password),
+            hashed_password=hash_password(
+                request.password
+            ),
             is_active=True,
-            is_verified=False,
         )
 
         return self.repository.create_user(user)
@@ -56,29 +54,33 @@ class AuthService:
     # LOGIN
     # ---------------------------------
 
-    def login(self, request: LoginRequest):
+    def login(
+        self,
+        email: str,
+        password: str,
+    ):
 
         user = self.repository.get_user_by_email(
-            request.email
+            email
         )
 
         if user is None:
             raise InvalidCredentialsError()
 
         if not verify_password(
-            request.password,
-            user.password_hash,
+            password,
+            user.hashed_password,
         ):
             raise InvalidCredentialsError()
 
         if not user.is_active:
             raise InvalidCredentialsError()
 
-        self.repository.update_last_login(user)
-
-        token = create_access_token(user.id)
+        access_token = create_access_token(
+            subject=str(user.id)
+        )
 
         return {
-            "access_token": token,
+            "access_token": access_token,
             "token_type": "bearer",
         }

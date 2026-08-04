@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from fastapi.security import OAuth2PasswordRequestForm
 from app.database.session import get_db
 from app.database.models.user import User
 from app.modules.auth.dependencies import get_current_user
@@ -61,14 +61,17 @@ def register(
     response_model=TokenResponse,
 )
 def login(
-    request: LoginRequest,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
 
     service = AuthService(AuthRepository(db))
 
     try:
-        return service.login(request)
+        return service.login(
+            form_data.username,
+            form_data.password,
+        )
 
     except InvalidCredentialsError:
         raise HTTPException(

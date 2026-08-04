@@ -67,3 +67,8 @@ class User(UUIDMixin, TimestampMixin, Base):
         foreign_keys="FamilyMember.user_id",
         back_populates="user",
     )
+    emergencies = relationship(
+        "Emergency",
+        back_populates="citizen",
+        cascade="all, delete-orphan",
+    )
