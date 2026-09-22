@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
-from app.database.mixins import TimestampMixin, UUIDMixin
+from app.database.mixins import UUIDMixin, TimestampMixin
 
 
 class User(UUIDMixin, TimestampMixin, Base):
@@ -25,3 +25,9 @@ class User(UUIDMixin, TimestampMixin, Base):
     responder_profile = relationship("ResponderProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     hospital_profile = relationship("Hospital", back_populates="user", uselist=False, cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="recipient", cascade="all, delete-orphan")
+    women_safety_profile = relationship(
+        "WomenSafetyProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
