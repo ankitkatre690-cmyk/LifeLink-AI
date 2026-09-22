@@ -10,10 +10,7 @@ from app.database.mixins import UUIDMixin, TimestampMixin
 class Emergency(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "emergencies"
 
-    citizen_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    citizen_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     emergency_type: Mapped[str] = mapped_column(String(50), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), default="Medium", nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="Pending", nullable=False)
@@ -22,18 +19,7 @@ class Emergency(UUIDMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
     citizen = relationship("User", back_populates="emergencies")
-    updates = relationship(
-        "EmergencyUpdate",
-        back_populates="emergency",
-        cascade="all, delete-orphan",
-    )
-    assignments = relationship(
-        "EmergencyAssignment",
-        back_populates="emergency",
-        cascade="all, delete-orphan",
-    )
-    dispatches = relationship(
-        "Dispatch",
-        back_populates="emergency",
-        cascade="all, delete-orphan",
-    )
+    updates = relationship("EmergencyUpdate", back_populates="emergency", cascade="all, delete-orphan")
+    assignments = relationship("EmergencyAssignment", back_populates="emergency", cascade="all, delete-orphan")
+    dispatches = relationship("Dispatch", back_populates="emergency", cascade="all, delete-orphan")
+    police_case = relationship("PoliceCase", back_populates="emergency", uselist=False, cascade="all, delete-orphan")
