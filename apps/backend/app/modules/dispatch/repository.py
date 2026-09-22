@@ -18,11 +18,9 @@ class DispatchRepository:
         return self.db.query(Emergency).filter(Emergency.id == emergency_id).first()
 
     def get_dispatch_for_emergency(self, emergency_id: uuid.UUID):
-        return (
-            self.db.query(Dispatch)
-            .filter(Dispatch.emergency_id == emergency_id)
-            .first()
-        )
+        return self.db.query(Dispatch).filter(
+            Dispatch.emergency_id == emergency_id
+        ).first()
 
     def get_available_responders(self):
         return (
@@ -32,17 +30,8 @@ class DispatchRepository:
                 ResponderProfile.latitude.is_not(None),
                 ResponderProfile.longitude.is_not(None),
             )
+            .with_for_update()
             .all()
-        )
-
-    def get_existing_assignment(self, emergency_id: uuid.UUID, responder_id: uuid.UUID):
-        return (
-            self.db.query(EmergencyAssignment)
-            .filter(
-                EmergencyAssignment.emergency_id == emergency_id,
-                EmergencyAssignment.responder_id == responder_id,
-            )
-            .first()
         )
 
     def get_available_hospital_resource(self):
@@ -54,7 +43,11 @@ class DispatchRepository:
                 HospitalResource.available_count > 0,
                 HospitalResource.is_available.is_(True),
             )
-            .order_by(HospitalResource.available_count.desc(), Hospital.name.asc())
+            .order_by(
+                HospitalResource.available_count.desc(),
+                Hospital.name.asc(),
+            )
+            .with_for_update(of=HospitalResource)
             .first()
         )
 
@@ -73,8 +66,22 @@ class DispatchRepository:
         self.db.flush()
         return log
 
+    def get_dispatch(self, dispatch_id: uuid.UUID):
+        return self.db.query(Dispatch).filter(Dispatch.id == dispatch_id).first()
+
+    def get_logs(self, dispatch_id: uuid.UUID):
+        return (
+            self.db.query(DispatchLog)
+            .filter(DispatchLog.dispatch_id == dispatch_id)
+            .order_by(DispatchLog.created_at.asc())
+            .all()
+        )
+
     def commit(self):
         self.db.commit()
+
+    def rollback(self):
+        self.db.rollback()
 
     def refresh(self, entity):
         self.db.refresh(entity)
