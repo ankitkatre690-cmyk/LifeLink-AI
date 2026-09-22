@@ -12,3 +12,5 @@ from app.database.models.hospital import Hospital
 from app.database.models.hospital_resource import HospitalResource
 from app.database.models.dispatch import Dispatch, DispatchLog
 from app.database.models.notification import Notification
+from app.database.models.women_safety_profile import WomenSafetyProfile
+from app.database.models.police_case import PoliceCase
