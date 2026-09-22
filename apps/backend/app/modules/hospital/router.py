@@ -43,14 +43,6 @@ def list_hospitals(db: Session = Depends(get_db), current_user: User = Depends(g
     return _service(db).list_hospitals()
 
 
-@router.get("/{hospital_id}", response_model=HospitalResponse)
-def get_hospital(hospital_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    try:
-        return _service(db).get_profile(hospital_id)
-    except HospitalProfileNotFound:
-        raise HTTPException(404, "Hospital not found.")
-
-
 @router.post("/resources", response_model=ResourceResponse, status_code=status.HTTP_201_CREATED)
 def add_resource(request: ResourceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
@@ -61,6 +53,14 @@ def add_resource(request: ResourceCreate, db: Session = Depends(get_db), current
         raise HTTPException(404, "Hospital profile not found.")
     except InvalidResourceCount:
         raise HTTPException(400, "Available count cannot exceed total count.")
+
+
+@router.get("/{hospital_id}", response_model=HospitalResponse)
+def get_hospital(hospital_id: UUID, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    try:
+        return _service(db).get_profile(hospital_id)
+    except HospitalProfileNotFound:
+        raise HTTPException(404, "Hospital not found.")
 
 
 @router.get("/{hospital_id}/resources", response_model=list[ResourceResponse])

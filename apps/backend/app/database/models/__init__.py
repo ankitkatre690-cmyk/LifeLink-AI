@@ -10,3 +10,4 @@ from app.database.models.responder_location import ResponderLocation
 from app.database.models.emergency_assignment import EmergencyAssignment
 from app.database.models.hospital import Hospital
 from app.database.models.hospital_resource import HospitalResource
+from app.database.models.dispatch import Dispatch, DispatchLog
