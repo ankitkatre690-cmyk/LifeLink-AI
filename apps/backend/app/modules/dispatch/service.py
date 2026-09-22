@@ -4,6 +4,7 @@ from app.database.models.dispatch import Dispatch, DispatchLog
 from app.database.models.emergency_assignment import EmergencyAssignment
 from app.modules.dispatch.exceptions import (
     DispatchAlreadyExists,
+    DispatchNotFound,
     EmergencyNotFound,
     NoAvailableHospitalResource,
     NoAvailableResponder,
@@ -28,24 +29,28 @@ class DispatchService:
         if not responders:
             raise NoAvailableResponder()
 
-        ranked = []
-        for responder in responders:
-            distance = haversine_distance_km(
-                emergency.latitude,
-                emergency.longitude,
-                responder.latitude,
-                responder.longitude,
-            )
-            ranked.append((distance, responder))
-
-        distance_km, responder = min(ranked, key=lambda item: item[0])
+        distance_km, responder = min(
+            (
+                (
+                    haversine_distance_km(
+                        emergency.latitude,
+                        emergency.longitude,
+                        responder.latitude,
+                        responder.longitude,
+                    ),
+                    responder,
+                )
+                for responder in responders
+            ),
+            key=lambda item: item[0],
+        )
         eta_minutes = estimate_eta_minutes(distance_km)
 
         hospital_result = self.repository.get_available_hospital_resource()
         if hospital_result is None:
             raise NoAvailableHospitalResource()
 
-        _, hospital = hospital_result
+        resource, hospital = hospital_result
 
         assignment = EmergencyAssignment(
             emergency_id=emergency.id,
@@ -60,6 +65,9 @@ class DispatchService:
         responder.status = "Busy"
         emergency.status = "Assigned"
 
+        resource.available_count -= 1
+        resource.is_available = resource.available_count > 0
+
         dispatch = Dispatch(
             emergency_id=emergency.id,
             assignment_id=assignment.id,
@@ -70,33 +78,34 @@ class DispatchService:
         )
         self.repository.create_dispatch(dispatch)
 
-        log = DispatchLog(
-            dispatch_id=dispatch.id,
-            status="Assigned",
-            message=(
-                f"Responder {responder.id} assigned at "
-                f"{round(distance_km, 3)} km; ETA {eta_minutes} minutes. "
-                f"Hospital {hospital.id} selected based on available resources."
-            ),
+        self.repository.create_log(
+            DispatchLog(
+                dispatch_id=dispatch.id,
+                status="Assigned",
+                message=(
+                    f"Responder {responder.id} assigned at "
+                    f"{round(distance_km, 3)} km; ETA {eta_minutes} minutes. "
+                    f"Hospital {hospital.id} resource reserved."
+                ),
+            )
         )
-        self.repository.create_log(log)
 
-        self.repository.commit()
+        try:
+            self.repository.commit()
+        except Exception:
+            self.repository.rollback()
+            raise
+
         self.repository.refresh(dispatch)
         return dispatch
 
     def get_dispatch(self, dispatch_id: uuid.UUID):
-        dispatch = self.repository.db.query(Dispatch).filter(
-            Dispatch.id == dispatch_id
-        ).first()
+        dispatch = self.repository.get_dispatch(dispatch_id)
         if dispatch is None:
-            raise EmergencyNotFound()
+            raise DispatchNotFound()
         return dispatch
 
     def get_logs(self, dispatch_id: uuid.UUID):
-        return (
-            self.repository.db.query(DispatchLog)
-            .filter(DispatchLog.dispatch_id == dispatch_id)
-            .order_by(DispatchLog.created_at.asc())
-            .all()
-        )
+        if self.repository.get_dispatch(dispatch_id) is None:
+            raise DispatchNotFound()
+        return self.repository.get_logs(dispatch_id)
