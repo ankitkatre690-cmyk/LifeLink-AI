@@ -8,6 +8,7 @@ from app.database.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.dispatch.exceptions import (
     DispatchAlreadyExists,
+    DispatchNotFound,
     EmergencyNotFound,
     NoAvailableHospitalResource,
     NoAvailableResponder,
@@ -24,16 +25,18 @@ def _service(db: Session) -> DispatchService:
     return DispatchService(DispatchRepository(db))
 
 
-@router.post(
-    "",
-    response_model=DispatchResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+def _ensure_dispatch_role(user: User):
+    if user.role is None or user.role.name not in {"Police", "Admin"}:
+        raise HTTPException(403, "Only Police or Admin users can trigger dispatch.")
+
+
+@router.post("", response_model=DispatchResponse, status_code=status.HTTP_201_CREATED)
 def create_dispatch(
     request: DispatchCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _ensure_dispatch_role(current_user)
     try:
         return _service(db).dispatch_emergency(request.emergency_id)
     except EmergencyNotFound:
@@ -52,9 +55,10 @@ def get_dispatch(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _ensure_dispatch_role(current_user)
     try:
         return _service(db).get_dispatch(dispatch_id)
-    except EmergencyNotFound:
+    except DispatchNotFound:
         raise HTTPException(404, "Dispatch not found.")
 
 
@@ -64,4 +68,8 @@ def get_dispatch_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return _service(db).get_logs(dispatch_id)
+    _ensure_dispatch_role(current_user)
+    try:
+        return _service(db).get_logs(dispatch_id)
+    except DispatchNotFound:
+        raise HTTPException(404, "Dispatch not found.")
