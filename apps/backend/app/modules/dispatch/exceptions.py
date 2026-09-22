@@ -2,6 +2,10 @@ class DispatchError(Exception):
     pass
 
 
+class DispatchNotFound(Exception):
+    pass
+
+
 class EmergencyNotFound(Exception):
     pass
 
