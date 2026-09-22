@@ -5,3 +5,6 @@ from app.database.models.family_group import FamilyGroup
 from app.database.models.family_member import FamilyMember
 from app.database.models.emergency import Emergency
 from app.database.models.emergency_update import EmergencyUpdate
+from app.database.models.responder_profile import ResponderProfile
+from app.database.models.responder_location import ResponderLocation
+from app.database.models.emergency_assignment import EmergencyAssignment

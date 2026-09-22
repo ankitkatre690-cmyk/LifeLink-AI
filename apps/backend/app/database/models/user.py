@@ -40,10 +40,6 @@ class User(UUIDMixin, TimestampMixin, Base):
         default=True,
     )
 
-    # -------------------------
-    # Relationships
-    # -------------------------
-
     role = relationship(
         "Role",
         back_populates="users",
@@ -67,8 +63,16 @@ class User(UUIDMixin, TimestampMixin, Base):
         foreign_keys="FamilyMember.user_id",
         back_populates="user",
     )
+
     emergencies = relationship(
         "Emergency",
         back_populates="citizen",
+        cascade="all, delete-orphan",
+    )
+
+    responder_profile = relationship(
+        "ResponderProfile",
+        back_populates="user",
+        uselist=False,
         cascade="all, delete-orphan",
     )

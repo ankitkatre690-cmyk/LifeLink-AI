@@ -47,10 +47,6 @@ class Emergency(UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
-    # -----------------------
-    # Relationships
-    # -----------------------
-
     citizen = relationship(
         "User",
         back_populates="emergencies",
@@ -58,6 +54,12 @@ class Emergency(UUIDMixin, TimestampMixin, Base):
 
     updates = relationship(
         "EmergencyUpdate",
+        back_populates="emergency",
+        cascade="all, delete-orphan",
+    )
+
+    assignments = relationship(
+        "EmergencyAssignment",
         back_populates="emergency",
         cascade="all, delete-orphan",
     )
