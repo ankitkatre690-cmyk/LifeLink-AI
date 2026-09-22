@@ -4,8 +4,6 @@ from app.database.models.emergency import Emergency
 from app.database.models.emergency_update import EmergencyUpdate
 from app.modules.emergency.exceptions import EmergencyNotFound
 from app.modules.emergency.repository import EmergencyRepository
-from app.realtime.events import build_event
-from app.realtime.manager import connection_manager
 from app.modules.emergency.schemas import (
     EmergencyCreate,
     EmergencyUpdateRequest,
@@ -47,19 +45,6 @@ class EmergencyService:
         )
 
         self.repository.create_update(timeline)
-
-        import asyncio
-        asyncio.create_task(connection_manager.send_to_user(
-            user_id,
-            build_event("emergency.created", {
-                "emergency_id": str(emergency.id),
-                "status": emergency.status,
-                "severity": emergency.severity,
-                "emergency_type": emergency.emergency_type,
-                "latitude": emergency.latitude,
-                "longitude": emergency.longitude,
-            }),
-        ))
 
         return emergency
 
@@ -107,16 +92,6 @@ class EmergencyService:
         )
 
         self.repository.create_update(timeline)
-
-        import asyncio
-        asyncio.create_task(connection_manager.send_to_user(
-            emergency.citizen_id,
-            build_event("emergency.status_changed", {
-                "emergency_id": str(emergency.id),
-                "status": emergency.status,
-                "severity": emergency.severity,
-            }),
-        ))
 
         return emergency
 
