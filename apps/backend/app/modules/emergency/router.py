@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.realtime.events import build_event
+from app.realtime.manager import connection_manager
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
@@ -31,13 +33,23 @@ router = APIRouter(
     response_model=EmergencyResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_emergency(
+async def create_emergency(
     request: EmergencyCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     service = EmergencyService(EmergencyRepository(db))
-    return service.create_emergency(current_user.id, request)
+    emergency = service.create_emergency(current_user.id, request)
+    await connection_manager.send_to_user(
+        current_user.id,
+        build_event("emergency.created", {
+            "emergency_id": str(emergency.id),
+            "status": emergency.status,
+            "severity": emergency.severity,
+            "emergency_type": emergency.emergency_type,
+        }),
+    )
+    return emergency
 
 
 # ---------------------------------------
@@ -72,7 +84,7 @@ def get_emergency(
     "/{emergency_id}",
     response_model=EmergencyResponse,
 )
-def update_status(
+async def update_status(
     emergency_id: UUID,
     request: EmergencyUpdateRequest,
     db: Session = Depends(get_db),
@@ -81,11 +93,20 @@ def update_status(
     service = EmergencyService(EmergencyRepository(db))
 
     try:
-        return service.update_status(
+        emergency = service.update_status(
             emergency_id,
             current_user.id,
             request,
         )
+        await connection_manager.send_to_user(
+            emergency.citizen_id,
+            build_event("emergency.status_changed", {
+                "emergency_id": str(emergency.id),
+                "status": emergency.status,
+                "severity": emergency.severity,
+            }),
+        )
+        return emergency
 
     except EmergencyNotFound:
         raise HTTPException(
