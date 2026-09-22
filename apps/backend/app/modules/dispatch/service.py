@@ -11,6 +11,8 @@ from app.modules.dispatch.exceptions import (
 )
 from app.modules.dispatch.repository import DispatchRepository
 from app.modules.dispatch.utils import estimate_eta_minutes, haversine_distance_km
+from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.service import NotificationService
 
 
 class DispatchService:
@@ -88,6 +90,39 @@ class DispatchService:
                     f"Hospital {hospital.id} resource reserved."
                 ),
             )
+        )
+
+        notifications = NotificationService(
+            NotificationRepository(self.repository.db)
+        )
+        notifications.create_in_app(
+            recipient_id=emergency.citizen_id,
+            emergency_id=emergency.id,
+            notification_type="DispatchAssigned",
+            title="Emergency Response Assigned",
+            message=(
+                f"A responder has been assigned. ETA: {eta_minutes} minutes."
+            ),
+        )
+        notifications.create_in_app(
+            recipient_id=responder.user_id,
+            emergency_id=emergency.id,
+            notification_type="ResponderAssignment",
+            title="New Emergency Assignment",
+            message=(
+                f"You have been assigned to an emergency. "
+                f"Distance: {round(distance_km, 3)} km; ETA: {eta_minutes} minutes."
+            ),
+        )
+        notifications.create_in_app(
+            recipient_id=hospital.user_id,
+            emergency_id=emergency.id,
+            notification_type="HospitalDispatch",
+            title="Incoming Emergency",
+            message=(
+                "An emergency dispatch has been routed to your hospital "
+                "and a resource has been reserved."
+            ),
         )
 
         try:
