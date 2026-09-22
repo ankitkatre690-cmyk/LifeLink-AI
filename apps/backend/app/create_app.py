@@ -6,6 +6,7 @@ from app.modules.family.router import router as family_router
 from app.modules.emergency.router import router as emergency_router
 from app.modules.responder.router import router as responder_router
 from app.modules.hospital.router import router as hospital_router
+from app.modules.dispatch.router import router as dispatch_router
 
 
 def create_app():
@@ -17,5 +18,6 @@ def create_app():
     app.include_router(emergency_router, prefix="/api/v1")
     app.include_router(responder_router, prefix="/api/v1")
     app.include_router(hospital_router, prefix="/api/v1")
+    app.include_router(dispatch_router, prefix="/api/v1")
 
     return app
