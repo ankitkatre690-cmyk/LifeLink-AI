@@ -10,6 +10,7 @@ from app.modules.dispatch.router import router as dispatch_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.women_safety.router import router as women_safety_router
 from app.modules.police.router import router as police_router
+from app.modules.admin.router import router as admin_router
 
 
 def create_app():
@@ -25,5 +26,6 @@ def create_app():
     app.include_router(notifications_router, prefix="/api/v1")
     app.include_router(women_safety_router, prefix="/api/v1")
     app.include_router(police_router, prefix="/api/v1")
+    app.include_router(admin_router, prefix="/api/v1")
 
     return app
