@@ -1,11 +1,11 @@
-import uuid
-
 from app.database.models.emergency import Emergency
 from app.database.models.emergency_update import EmergencyUpdate
-from app.database.models.women_safety_profile import WomenSafetyProfile
 from app.database.models.family_group import FamilyGroup
 from app.database.models.family_member import FamilyMember
 from app.database.models.notification import Notification
+from app.database.models.role import Role
+from app.database.models.user import User
+from app.database.models.women_safety_profile import WomenSafetyProfile
 from app.modules.women_safety.exceptions import (
     WomenSafetyDisabled,
     WomenSafetyProfileExists,
@@ -96,6 +96,25 @@ class WomenSafetyService:
                     notification_type="WomenSafetySOS",
                     title="Women Safety SOS",
                     message="A women safety SOS has been activated. Emergency location is available in the emergency record.",
+                    channel="InApp",
+                    is_read=False,
+                )
+            )
+
+        police_users = (
+            self.repository.db.query(User.id)
+            .join(Role, Role.id == User.role_id)
+            .filter(Role.name == "Police", User.is_active.is_(True))
+            .all()
+        )
+        for row in police_users:
+            self.repository.db.add(
+                Notification(
+                    recipient_id=row[0],
+                    emergency_id=emergency.id,
+                    notification_type="PoliceEmergencyAlert",
+                    title="New Women Safety Emergency",
+                    message="A new women safety SOS is awaiting police review in the active emergency queue.",
                     channel="InApp",
                     is_read=False,
                 )
