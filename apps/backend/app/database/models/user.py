@@ -24,3 +24,4 @@ class User(UUIDMixin, TimestampMixin, Base):
     emergencies = relationship("Emergency", back_populates="citizen", cascade="all, delete-orphan")
     responder_profile = relationship("ResponderProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     hospital_profile = relationship("Hospital", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="recipient", cascade="all, delete-orphan")
