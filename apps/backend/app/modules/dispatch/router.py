@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.realtime.events import build_event
+from app.realtime.manager import connection_manager
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
@@ -31,14 +33,48 @@ def _ensure_dispatch_role(user: User):
 
 
 @router.post("", response_model=DispatchResponse, status_code=status.HTTP_201_CREATED)
-def create_dispatch(
+async def create_dispatch(
     request: DispatchCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _ensure_dispatch_role(current_user)
     try:
-        return _service(db).dispatch_emergency(request.emergency_id)
+        dispatch = _service(db).dispatch_emergency(request.emergency_id)
+        await connection_manager.send_to_user(
+            dispatch.emergency.citizen_id,
+            build_event("dispatch.assigned", {
+                "dispatch_id": str(dispatch.id),
+                "emergency_id": str(dispatch.emergency_id),
+                "responder_id": str(dispatch.assignment.responder_id),
+                "hospital_id": str(dispatch.hospital_id) if dispatch.hospital_id else None,
+                "distance_km": dispatch.distance_km,
+                "eta_minutes": dispatch.eta_minutes,
+                "status": dispatch.dispatch_status,
+            }),
+        )
+        await connection_manager.send_to_user(
+            dispatch.assignment.responder.user_id,
+            build_event("dispatch.assignment", {
+                "dispatch_id": str(dispatch.id),
+                "emergency_id": str(dispatch.emergency_id),
+                "assignment_id": str(dispatch.assignment_id),
+                "distance_km": dispatch.distance_km,
+                "eta_minutes": dispatch.eta_minutes,
+                "status": dispatch.dispatch_status,
+            }),
+        )
+        if dispatch.hospital is not None:
+            await connection_manager.send_to_user(
+                dispatch.hospital.user_id,
+                build_event("dispatch.hospital_incoming", {
+                    "dispatch_id": str(dispatch.id),
+                    "emergency_id": str(dispatch.emergency_id),
+                    "hospital_id": str(dispatch.hospital_id),
+                    "status": dispatch.dispatch_status,
+                }),
+            )
+        return dispatch
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
     except DispatchAlreadyExists:
