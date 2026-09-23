@@ -3,6 +3,8 @@ import uuid
 from app.database.models.notification import Notification
 from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.repository import NotificationRepository
+from app.notifications.events import notification_to_push
+from app.notifications.push import push_provider
 
 
 class NotificationService:
@@ -37,7 +39,7 @@ class NotificationService:
         notification_type: str,
         emergency_id: uuid.UUID | None = None,
     ):
-        return self.repository.create(
+        notification = self.repository.create(
             Notification(
                 recipient_id=recipient_id,
                 emergency_id=emergency_id,
@@ -48,3 +50,11 @@ class NotificationService:
                 is_read=False,
             )
         )
+        push_provider.send(notification_to_push(
+            recipient_id=recipient_id,
+            title=title,
+            message=message,
+            notification_type=notification_type,
+            emergency_id=emergency_id,
+        ))
+        return notification
