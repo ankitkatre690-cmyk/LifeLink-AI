@@ -23,6 +23,13 @@ class PushNotificationProvider:
         raise NotImplementedError
 
 
+class FirebasePushNotificationProvider(PushNotificationProvider):
+    """Placeholder for the Firebase Admin SDK implementation."""
+
+    def send(self, message: PushMessage) -> None:
+        raise RuntimeError("Firebase push delivery is not configured.")
+
+
 class NoOpPushNotificationProvider(PushNotificationProvider):
     def send(self, message: PushMessage) -> None:
         return None
