@@ -25,17 +25,7 @@ ALLOWED_ASSIGNMENT_STATUSES = {
     "Cancelled",
 }
 
-ALLOWED_ASSIGNMENT_TRANSITIONS = {
-    "Assigned": {"Accepted", "Cancelled"},
-    "Accepted": {"EnRoute", "Cancelled"},
-    "EnRoute": {"OnScene", "Cancelled"},
-    "OnScene": {"Completed", "Cancelled"},
-    "Completed": set(),
-    "Cancelled": set(),
-}
-
-ALLOWED_ASSIGNMENT_TRANSITIONS = {
-    "Assigned": {"Accepted", "Cancelled"},
+ALLOWED_ASSIGNMENT_TRANSITIONS = {    "Assigned": {"Accepted", "Cancelled"},
     "Accepted": {"EnRoute", "Cancelled"},
     "EnRoute": {"OnScene", "Cancelled"},
     "OnScene": {"Completed", "Cancelled"},
@@ -135,6 +125,16 @@ class ResponderService:
         if existing:
             raise AssignmentAlreadyExists()
 
+        if emergency.status not in {"Pending", "Accepted"}:
+            raise ValueError(
+                f"Cannot assign responder to emergency in status: {emergency.status}"
+            )
+
+        if profile.status != "Available":
+            raise ValueError(
+                f"Responder is not available for assignment: {profile.status}"
+            )
+
         assignment = EmergencyAssignment(
             emergency_id=request.emergency_id,
             responder_id=profile.id,
@@ -144,11 +144,8 @@ class ResponderService:
             notes=request.notes,
         )
 
-        if emergency.status in {"Pending", "Accepted"}:
-            emergency.status = "Assigned"
-
-        if profile.status == "Available":
-            profile.status = "Busy"
+        emergency.status = "Assigned"
+        profile.status = "Busy"
 
         return self.repository.create_assignment(assignment)
 
