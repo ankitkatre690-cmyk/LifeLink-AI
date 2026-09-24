@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/location/location_service.dart';
 import '../data/emergency_repository.dart';
 
 final emergencyRepositoryProvider = Provider<EmergencyRepository>(
   (ref) => EmergencyRepository(ref.read(apiClientProvider)),
+);
+
+final locationServiceProvider = Provider<LocationService>(
+  (ref) => LocationService(),
 );
 
 class CitizenDashboardPage extends ConsumerStatefulWidget {
@@ -26,15 +31,16 @@ class _CitizenDashboardPageState
     setState(() => _isSending = true);
 
     try {
-      // Real GPS is connected in the location-service increment.
-      // Do not treat these placeholder coordinates as production location.
+      final position = await ref
+          .read(locationServiceProvider)
+          .getCurrentPosition();
+
       final emergency = await ref
           .read(emergencyRepositoryProvider)
           .createEmergency(
             emergencyType: 'GeneralEmergency',
-            severity: 'High',
-            latitude: 0,
-            longitude: 0,
+            latitude: position.latitude,
+            longitude: position.longitude,
             description: 'Citizen emergency SOS initiated from the app.',
           );
 
@@ -54,6 +60,12 @@ class _CitizenDashboardPageState
             ),
           ],
         ),
+      );
+    } on LocationException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
       );
     } catch (_) {
       if (!mounted) return;
@@ -93,7 +105,7 @@ class _CitizenDashboardPageState
           const SizedBox(height: 8),
           const Text(
             'Use SOS when you need emergency assistance. '
-            'Location integration will be connected before production use.',
+            'Your current device location is shared with the emergency request.',
           ),
           const SizedBox(height: 24),
           SizedBox(
@@ -105,6 +117,15 @@ class _CitizenDashboardPageState
             ),
           ),
           const SizedBox(height: 16),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.location_on_outlined),
+              title: Text('Current location'),
+              subtitle: Text(
+                'GPS permission is requested only when SOS is initiated.',
+              ),
+            ),
+          ),
           const Card(
             child: ListTile(
               leading: Icon(Icons.family_restroom),
