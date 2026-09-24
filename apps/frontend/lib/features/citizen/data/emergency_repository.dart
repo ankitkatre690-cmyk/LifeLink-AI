@@ -1,5 +1,3 @@
-import 'package:dio/dio.dart';
-
 import '../../../core/network/api_client.dart';
 
 class EmergencyRepository {
@@ -9,7 +7,6 @@ class EmergencyRepository {
 
   Future<Map<String, dynamic>> createEmergency({
     required String emergencyType,
-    required String severity,
     required double latitude,
     required double longitude,
     String? description,
@@ -18,7 +15,6 @@ class EmergencyRepository {
       '/emergency',
       data: {
         'emergency_type': emergencyType,
-        'severity': severity,
         'latitude': latitude,
         'longitude': longitude,
         if (description != null && description.trim().isNotEmpty)
