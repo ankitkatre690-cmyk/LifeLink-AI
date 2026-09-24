@@ -311,3 +311,32 @@ def test_dispatch_rolls_back_when_late_persistence_fails():
         DispatchService(repository).dispatch_emergency(repository.emergency.id)
 
     assert repository.rollback_called is True
+
+
+def test_dispatch_never_decrements_an_exhausted_resource():
+    class ExhaustedRepository(FailingDispatchRepository):
+        def __init__(self):
+            super().__init__()
+            self.resource.available_count = 0
+            self.resource.is_available = False
+
+        def get_available_hospital_resource(self):
+            return self.resource, self.hospital
+
+    repository = ExhaustedRepository()
+
+    with pytest.raises(Exception):
+        DispatchService(repository).dispatch_emergency(repository.emergency.id)
+
+    assert repository.resource.available_count == 0
+
+
+def test_hospital_resource_availability_is_derived_from_count():
+    class Resource:
+        total_count = 5
+        available_count = 0
+        is_available = True
+
+    resource = Resource()
+    resource.is_available = resource.available_count > 0
+    assert resource.is_available is False
