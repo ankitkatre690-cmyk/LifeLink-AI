@@ -15,6 +15,7 @@ from app.modules.dispatch.exceptions import (
 from app.modules.dispatch.repository import DispatchRepository
 from app.modules.dispatch.schemas import DispatchCreate, DispatchResponse
 from app.modules.dispatch.service import DispatchService
+from app.modules.family.repository import FamilyRepository
 from app.modules.dispatch.realtime import publish_dispatch_events
 from app.modules.police.exceptions import PoliceCaseExists, PoliceCaseNotFound
 from app.modules.emergency.exceptions import EmergencyNotFound
@@ -120,7 +121,12 @@ async def dispatch_from_police(
         dispatch = DispatchService(DispatchRepository(db)).dispatch_emergency(
             request.emergency_id
         )
-        await publish_dispatch_events(dispatch)
+        await publish_dispatch_events(
+            dispatch,
+            FamilyRepository(db).get_member_user_ids_for_creator(
+                dispatch.emergency.citizen_id
+            ),
+        )
         return dispatch
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
