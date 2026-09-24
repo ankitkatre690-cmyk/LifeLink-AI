@@ -47,3 +47,9 @@ def test_hospital_resource_has_capacity_fields():
     from app.database.models.hospital_resource import HospitalResource
     assert "available_count" in HospitalResource.__table__.c
     assert "total_count" in HospitalResource.__table__.c
+
+
+def test_police_service_has_emergency_lifecycle_guards():
+    from app.modules.police.service import PoliceService
+    assert hasattr(PoliceService, "create_case")
+    assert hasattr(PoliceService, "update_case")
