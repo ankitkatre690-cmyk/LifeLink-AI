@@ -7,6 +7,7 @@ from app.modules.dispatch.service import DispatchService
 from app.modules.police.service import ALLOWED_CASE_TRANSITIONS
 from app.modules.responder.exceptions import AssignmentAlreadyExists
 from app.modules.responder.service import ResponderService
+from app.modules.emergency.exceptions import EmergencyNotFound
 from app.modules.emergency.service import EmergencyService
 
 
@@ -574,11 +575,10 @@ def test_emergency_object_access_raises_not_found_before_authorization():
 
     repository = MissingRepository(None, False)
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(EmergencyNotFound) as exc_info:
         EmergencyService(repository).get_emergency_for_user(
             uuid.uuid4(),
             uuid.uuid4(),
             "Citizen",
         )
 
-    assert exc_info.type.__name__ == "EmergencyNotFound"
