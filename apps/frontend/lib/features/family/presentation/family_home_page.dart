@@ -76,6 +76,10 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
     _realtimeSubscription = client.events.listen((event) {
       if (!mounted) return;
       final type = event['event']?.toString() ?? '';
+      if (type == 'connected') {
+        setState(() => _realtimeConnected = true);
+        return;
+      }
       final data = event['data'];
       if (data is! Map) return;
       if (type != 'emergency.created' && type != 'emergency.status_changed') return;
