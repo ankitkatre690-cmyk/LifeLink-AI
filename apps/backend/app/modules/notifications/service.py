@@ -1,8 +1,13 @@
+import logging
 import uuid
 
 from app.database.models.notification import Notification
 from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.repository import NotificationRepository
+from app.notifications.events import notification_to_push
+from app.notifications.push import push_provider
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
@@ -37,7 +42,7 @@ class NotificationService:
         notification_type: str,
         emergency_id: uuid.UUID | None = None,
     ):
-        return self.repository.create(
+        notification = self.repository.create(
             Notification(
                 recipient_id=recipient_id,
                 emergency_id=emergency_id,
@@ -48,3 +53,28 @@ class NotificationService:
                 is_read=False,
             )
         )
+
+        device_tokens = self.repository.list_active_device_tokens(recipient_id)
+        token_values = [token.token for token in device_tokens]
+        if token_values:
+            try:
+                invalid_tokens = push_provider.send(
+                    notification_to_push(
+                        recipient_id=recipient_id,
+                        title=title,
+                        message=message,
+                        notification_type=notification_type,
+                        emergency_id=emergency_id,
+                    ),
+                    token_values,
+                )
+                self.repository.deactivate_device_tokens(invalid_tokens)
+            except Exception:
+                # Push delivery must never prevent the persisted in-app emergency
+                # notification from completing its normal transaction.
+                logger.exception(
+                    "Push delivery failed for notification recipient %s",
+                    recipient_id,
+                )
+
+        return notification
