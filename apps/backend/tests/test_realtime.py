@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 from app.core.security import create_access_token, decode_access_token
-from app.modules.auth import service as auth_service
 from app.realtime.router import _get_authenticated_user_id
 
 
