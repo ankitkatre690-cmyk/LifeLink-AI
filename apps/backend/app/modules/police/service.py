@@ -7,6 +7,13 @@ from app.modules.police.repository import PoliceRepository
 from app.modules.police.schemas import PoliceCaseCreate, PoliceCaseUpdate
 
 
+ALLOWED_CASE_TRANSITIONS = {
+    "Open": {"Closed", "Cancelled"},
+    "Closed": set(),
+    "Cancelled": set(),
+}
+
+
 class PoliceService:
     def __init__(self, repository: PoliceRepository):
         self.repository = repository
@@ -43,6 +50,25 @@ class PoliceService:
         emergency = self.repository.get_emergency(case.emergency_id)
         if emergency is None:
             raise EmergencyNotFound()
+
+        if request.case_status not in ALLOWED_CASE_TRANSITIONS:
+            raise ValueError(f"Invalid police case status: {request.case_status}")
+
+        if (
+            request.case_status != case.case_status
+            and request.case_status
+            not in ALLOWED_CASE_TRANSITIONS.get(case.case_status, set())
+        ):
+            raise ValueError(
+                f"Invalid police case status transition: "
+                f"{case.case_status} -> {request.case_status}"
+            )
+
+        if case.case_status in {"Closed", "Cancelled"} and request.case_status == case.case_status:
+            case.notes = request.notes
+            self.repository.commit()
+            self.repository.refresh(case)
+            return case
 
         case.case_status = request.case_status
         case.notes = request.notes
