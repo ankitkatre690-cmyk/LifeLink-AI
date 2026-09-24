@@ -25,7 +25,8 @@ ALLOWED_ASSIGNMENT_STATUSES = {
     "Cancelled",
 }
 
-ALLOWED_ASSIGNMENT_TRANSITIONS = {    "Assigned": {"Accepted", "Cancelled"},
+ALLOWED_ASSIGNMENT_TRANSITIONS = {
+    "Assigned": {"Accepted", "Cancelled"},
     "Accepted": {"EnRoute", "Cancelled"},
     "EnRoute": {"OnScene", "Cancelled"},
     "OnScene": {"Completed", "Cancelled"},
