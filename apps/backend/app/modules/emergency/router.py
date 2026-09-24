@@ -40,7 +40,23 @@ async def create_emergency(
     current_user: User = Depends(get_current_user),
 ):
     service = EmergencyService(EmergencyRepository(db))
-    return service.create_emergency(current_user.id, request)
+    emergency = service.create_emergency(current_user.id, request)
+
+    event = build_event("emergency.created", {
+        "emergency_id": str(emergency.id),
+        "citizen_id": str(emergency.citizen_id),
+        "status": emergency.status,
+        "severity": emergency.severity,
+        "emergency_type": emergency.emergency_type,
+    })
+    await connection_manager.send_to_user(emergency.citizen_id, event)
+
+    for user_id in FamilyRepository(db).get_member_user_ids_for_creator(
+        emergency.citizen_id
+    ):
+        await connection_manager.send_to_user(user_id, event)
+
+    return emergency
 
 
 # ---------------------------------------
