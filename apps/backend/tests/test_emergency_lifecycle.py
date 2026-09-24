@@ -204,3 +204,34 @@ def test_assignment_status_synchronizes_emergency_status(
     )
 
     assert repository.emergency.status == expected_emergency_status
+
+
+def test_responder_assignment_rejects_existing_active_assignment():
+    emergency = FakeEmergency("Pending")
+    repository = FakeResponderRepository(emergency)
+    repository.get_active_assignment_for_emergency = lambda emergency_id: FakeAssignment(
+        status="Assigned"
+    )
+
+    with pytest.raises(Exception):
+        ResponderService(repository).create_assignment(
+            FakeUser(),
+            type("Request", (), {
+                "emergency_id": emergency.id,
+                "distance_km": 1.0,
+                "eta_minutes": 2,
+                "notes": None,
+            })(),
+        )
+
+
+def test_dispatch_repository_guard_is_checked_before_responder_selection():
+    class DispatchGuardRepository(FakeDispatchRepository):
+        def get_active_assignment_for_emergency(self, emergency_id):
+            return FakeAssignment(status="Assigned")
+
+    emergency = FakeEmergency("Pending")
+    repository = DispatchGuardRepository(emergency)
+
+    with pytest.raises(Exception):
+        DispatchService(repository).dispatch_emergency(emergency.id)
