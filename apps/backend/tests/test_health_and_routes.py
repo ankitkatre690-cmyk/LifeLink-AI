@@ -61,3 +61,41 @@ def test_emergency_status_machine_defines_terminal_states():
     assert ALLOWED_STATUS_TRANSITIONS["OnScene"] == {"Completed", "Cancelled"}
     assert ALLOWED_STATUS_TRANSITIONS["Completed"] == set()
     assert ALLOWED_STATUS_TRANSITIONS["Cancelled"] == set()
+
+
+
+def test_require_roles_allows_authorized_role():
+    from app.modules.auth.dependencies import require_roles
+
+    user = type("User", (), {"role": type("Role", (), {"name": "Police"})()})()
+    dependency = require_roles("Police", "Admin")
+
+    assert dependency(user) is user
+
+
+def test_require_roles_rejects_unauthorized_role():
+    from fastapi import HTTPException
+    from app.modules.auth.dependencies import require_roles
+
+    user = type("User", (), {"role": type("Role", (), {"name": "Citizen"})()})()
+    dependency = require_roles("Police", "Admin")
+
+    try:
+        dependency(user)
+        assert False, "expected HTTPException"
+    except HTTPException as exc:
+        assert exc.status_code == 403
+
+
+def test_require_roles_rejects_missing_role():
+    from fastapi import HTTPException
+    from app.modules.auth.dependencies import require_roles
+
+    user = type("User", (), {"role": None})()
+    dependency = require_roles("Citizen")
+
+    try:
+        dependency(user)
+        assert False, "expected HTTPException"
+    except HTTPException as exc:
+        assert exc.status_code == 403
