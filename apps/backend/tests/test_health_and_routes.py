@@ -1,0 +1,24 @@
+def test_app_starts(client):
+    response = client.get("/docs")
+    assert response.status_code == 200
+
+
+def test_auth_login_route_is_registered(client):
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    assert "/api/v1/auth/login" in response.json()["paths"]
+
+
+def test_composed_routes_are_registered(client):
+    paths = client.get("/openapi.json").json()["paths"]
+    expected = [
+        "/api/v1/responders",
+        "/api/v1/hospitals",
+        "/api/v1/dispatch",
+        "/api/v1/notifications",
+        "/api/v1/police/emergencies/active",
+        "/api/v1/admin/dashboard",
+        "/api/v1/ai/risk-assessment",
+    ]
+    for path in expected:
+        assert path in paths, path
