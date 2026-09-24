@@ -34,6 +34,15 @@ ALLOWED_ASSIGNMENT_TRANSITIONS = {
     "Cancelled": set(),
 }
 
+ALLOWED_ASSIGNMENT_TRANSITIONS = {
+    "Assigned": {"Accepted", "Cancelled"},
+    "Accepted": {"EnRoute", "Cancelled"},
+    "EnRoute": {"OnScene", "Cancelled"},
+    "OnScene": {"Completed", "Cancelled"},
+    "Completed": set(),
+    "Cancelled": set(),
+}
+
 
 class ResponderService:
     def __init__(self, repository: ResponderRepository):
