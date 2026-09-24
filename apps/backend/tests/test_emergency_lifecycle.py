@@ -122,14 +122,14 @@ class FakeAssignment:
 
 
 class FakeCompletionRepository:
-    def __init__(self, resource, emergency_status="Assigned"):
+    def __init__(self, resource, emergency_status="OnScene", assignment_status="OnScene"):
 
         self.profile = type(
             "Profile",
             (),
             {"id": uuid.uuid4(), "status": "Busy"},
         )()
-        self.assignment = FakeAssignment()
+        self.assignment = FakeAssignment(status=assignment_status)
         self.emergency = FakeEmergency(emergency_status)
         self.resource = resource
         self.dispatch = FakeDispatch(uuid.uuid4())
@@ -181,21 +181,26 @@ def test_terminal_assignment_releases_hospital_resource_once(terminal_status):
 
 
 @pytest.mark.parametrize(
-    ("assignment_status", "expected_emergency_status"),
+    ("previous_assignment_status", "previous_emergency_status", "assignment_status"),
     [
-        ("Accepted", "Accepted"),
-        ("EnRoute", "EnRoute"),
-        ("OnScene", "OnScene"),
-        ("Completed", "Completed"),
-        ("Cancelled", "Cancelled"),
+        ("Assigned", "Assigned", "Accepted"),
+        ("Accepted", "Accepted", "EnRoute"),
+        ("EnRoute", "EnRoute", "OnScene"),
+        ("OnScene", "OnScene", "Completed"),
+        ("OnScene", "OnScene", "Cancelled"),
     ],
 )
 def test_assignment_status_synchronizes_emergency_status(
+    previous_assignment_status,
+    previous_emergency_status,
     assignment_status,
-    expected_emergency_status,
 ):
     resource = FakeResource(available_count=0, total_count=1)
-    repository = FakeCompletionRepository(resource)
+    repository = FakeCompletionRepository(
+        resource,
+        emergency_status=previous_emergency_status,
+        assignment_status=previous_assignment_status,
+    )
     service = ResponderService(repository)
 
     service.update_assignment(
@@ -205,7 +210,7 @@ def test_assignment_status_synchronizes_emergency_status(
         None,
     )
 
-    assert repository.emergency.status == expected_emergency_status
+    assert repository.emergency.status == assignment_status
 
 
 def test_responder_assignment_rejects_existing_active_assignment():
