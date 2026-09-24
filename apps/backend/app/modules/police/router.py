@@ -15,6 +15,7 @@ from app.modules.dispatch.exceptions import (
 from app.modules.dispatch.repository import DispatchRepository
 from app.modules.dispatch.schemas import DispatchCreate, DispatchResponse
 from app.modules.dispatch.service import DispatchService
+from app.modules.dispatch.realtime import publish_dispatch_events
 from app.modules.police.exceptions import PoliceCaseExists, PoliceCaseNotFound
 from app.modules.emergency.exceptions import EmergencyNotFound
 from app.modules.police.repository import PoliceRepository
@@ -92,16 +93,18 @@ def update_case(
 
 
 @router.post("/dispatch", response_model=DispatchResponse)
-def dispatch_from_police(
+async def dispatch_from_police(
     request: DispatchCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _ensure_police(current_user)
     try:
-        return DispatchService(DispatchRepository(db)).dispatch_emergency(
+        dispatch = DispatchService(DispatchRepository(db)).dispatch_emergency(
             request.emergency_id
         )
+        await publish_dispatch_events(dispatch)
+        return dispatch
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
     except DispatchAlreadyExists:
