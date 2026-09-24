@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 from app.modules.family.repository import FamilyRepository
 from app.modules.responder.exceptions import (
     AssignmentAlreadyExists,
@@ -107,7 +107,7 @@ def get_responder(
 def update_my_status(
     request: ResponderStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).update_status(current_user, request.status)
@@ -126,7 +126,7 @@ def update_my_status(
 def update_my_location(
     request: ResponderLocationUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).update_location(
@@ -148,7 +148,7 @@ def update_my_location(
 def create_assignment(
     request: AssignmentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).create_assignment(current_user, request)
@@ -171,7 +171,7 @@ def create_assignment(
 def get_assignment(
     assignment_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).get_assignment(current_user, assignment_id)
@@ -189,7 +189,7 @@ async def update_assignment(
     assignment_id: UUID,
     request: AssignmentStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         assignment = _service(db).update_assignment(
