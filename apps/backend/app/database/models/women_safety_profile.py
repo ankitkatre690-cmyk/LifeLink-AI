@@ -16,7 +16,6 @@ class WomenSafetyProfile(UUIDMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
-        index=True,
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     safe_word: Mapped[str | None] = mapped_column(String(50), nullable=True)
