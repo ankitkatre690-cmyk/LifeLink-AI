@@ -113,3 +113,5 @@ async def dispatch_from_police(
         raise HTTPException(409, "No available responder with a current location.")
     except NoAvailableHospitalResource:
         raise HTTPException(409, "No hospital has an available resource.")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
