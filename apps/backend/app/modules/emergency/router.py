@@ -78,16 +78,15 @@ def get_emergency(
     service = EmergencyService(EmergencyRepository(db))
 
     try:
-        emergency = service.get_emergency(emergency_id)
-        if (
-            emergency.citizen_id != current_user.id
-            and (
-                current_user.role is None
-                or current_user.role.name not in {"Police", "Admin", "Responder"}
+        role = current_user.role.name if current_user.role else None
+        try:
+            return service.get_emergency_for_user(
+                emergency_id,
+                current_user.id,
+                role,
             )
-        ):
-            raise HTTPException(403, "You are not authorized to view this emergency.")
-        return emergency
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc))
 
     except EmergencyNotFound:
         raise HTTPException(
@@ -171,18 +170,15 @@ def get_timeline(
 ):
     service = EmergencyService(EmergencyRepository(db))
     try:
-        emergency = service.get_emergency(emergency_id)
-        if (
-            emergency.citizen_id != current_user.id
-            and (
-                current_user.role is None
-                or current_user.role.name not in {"Police", "Admin", "Responder"}
+        role = current_user.role.name if current_user.role else None
+        try:
+            service.get_emergency_for_user(
+                emergency_id,
+                current_user.id,
+                role,
             )
-        ):
-            raise HTTPException(
-                403,
-                "You are not authorized to view this emergency timeline.",
-            )
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc))
         return service.get_timeline(emergency_id)
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
