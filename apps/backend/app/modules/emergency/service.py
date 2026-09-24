@@ -106,6 +106,12 @@ class EmergencyService:
                 f"Invalid emergency status transition: {current_status} -> {request.status}"
             )
 
+        if request.status == "Cancelled" and request.status != current_status:
+            if self.repository.get_active_assignment_for_emergency(emergency.id) is not None:
+                raise ValueError(
+                    "Cannot cancel an emergency while an active responder assignment exists."
+                )
+
         emergency.status = request.status
 
         self.repository.update()
