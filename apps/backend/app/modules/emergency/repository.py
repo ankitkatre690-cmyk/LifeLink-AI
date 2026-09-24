@@ -42,6 +42,14 @@ class EmergencyRepository:
             .all()
         )
 
+    def get_by_id_for_update(self, emergency_id: UUID):
+        return (
+            self.db.query(Emergency)
+            .filter(Emergency.id == emergency_id)
+            .with_for_update()
+            .first()
+        )
+
     def get_active_assignment_for_emergency(self, emergency_id: UUID):
         return (
             self.db.query(EmergencyAssignment)
