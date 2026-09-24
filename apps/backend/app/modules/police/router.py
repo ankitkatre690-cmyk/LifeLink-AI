@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 from app.modules.dispatch.exceptions import (
     DispatchAlreadyExists,
     EmergencyNotFound,
@@ -39,7 +39,7 @@ def _ensure_police(user: User):
 @router.get("/emergencies/active", response_model=list[PoliceActiveEmergencyResponse])
 def list_active_emergencies(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_police(current_user)
     return PoliceService(PoliceRepository(db)).list_active_emergencies()
@@ -50,7 +50,7 @@ def create_case(
     emergency_id: UUID,
     request: PoliceCaseCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_police(current_user)
     try:
@@ -67,7 +67,7 @@ def create_case(
 def get_case(
     case_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_police(current_user)
     try:
@@ -81,7 +81,7 @@ def update_case(
     case_id: UUID,
     request: PoliceCaseUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_police(current_user)
     try:
@@ -98,7 +98,7 @@ def update_case(
 async def dispatch_from_police(
     request: DispatchCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_police(current_user)
     try:
