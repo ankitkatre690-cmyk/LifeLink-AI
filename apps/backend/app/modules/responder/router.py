@@ -48,7 +48,7 @@ def _service(db: Session) -> ResponderService:
 def create_responder_profile(
     request: ResponderCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).create_profile(current_user, request)
@@ -64,7 +64,7 @@ def create_responder_profile(
 )
 def get_my_responder_profile(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).get_my_profile(current_user)
@@ -80,7 +80,7 @@ def get_my_responder_profile(
 )
 def list_responders(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     return _service(db).list_profiles()
 
@@ -92,7 +92,7 @@ def list_responders(
 def get_responder(
     responder_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     try:
         return _service(db).get_profile(responder_id)
@@ -148,7 +148,7 @@ def update_my_location(
 def create_assignment(
     request: AssignmentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("Responder")),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     try:
         return _service(db).create_assignment(current_user, request)
