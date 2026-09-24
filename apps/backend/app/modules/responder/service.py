@@ -231,36 +231,35 @@ class ResponderService:
         if emergency_status is not None:
             emergency.status = emergency_status
 
+        dispatch = self.repository.get_dispatch_by_assignment_id(
+            assignment.id
+        )
+
         if status in {"Completed", "Cancelled"}:
             profile.status = "Available"
 
             # A dispatch reserves one hospital resource. Release that
             # reservation exactly once when the assignment reaches a
-            # terminal state.
+            # terminal state. The assignment row is locked above, so a
+            # repeated terminal update cannot release inventory twice.
             if (
                 previous_status not in {"Completed", "Cancelled"}
                 and status in {"Completed", "Cancelled"}
+                and dispatch is not None
+                and dispatch.resource_id is not None
             ):
-                dispatch = self.repository.get_dispatch_by_assignment_id(
-                    assignment.id
+                resource = self.repository.get_hospital_resource(
+                    dispatch.resource_id
                 )
-                if (
-                    dispatch is not None
-                    and dispatch.dispatch_status == "Assigned"
-                    and dispatch.resource_id is not None
-                ):
-                    resource = self.repository.get_hospital_resource(
-                        dispatch.resource_id
+                if resource is not None:
+                    resource.available_count = min(
+                        resource.total_count,
+                        resource.available_count + 1,
                     )
-                    if resource is not None:
-                        resource.available_count = min(
-                            resource.total_count,
-                            resource.available_count + 1,
-                        )
-                        resource.is_available = resource.available_count > 0
+                    resource.is_available = resource.available_count > 0
 
-                if dispatch is not None and dispatch.dispatch_status == "Assigned":
-                    dispatch.dispatch_status = status
+        if dispatch is not None:
+            dispatch.dispatch_status = status
 
         self.repository.update_profile()
         return assignment
