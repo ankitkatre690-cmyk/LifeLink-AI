@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/realtime/realtime_client.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../data/responder_api.dart';
 
 final responderApiProvider = Provider<ResponderApi>(
@@ -23,11 +27,17 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _assignment;
   String? _assignmentId;
+  RealtimeClient? _realtime;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  bool _realtimeConnected = false;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(_load);
+    Future.microtask(() async {
+      await _load();
+      await _connectRealtime();
+    });
   }
 
   Future<void> _load() async {
@@ -43,6 +53,38 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _connectRealtime() async {
+    final token = await const SecureStorage().readAccessToken();
+    if (!mounted || token == null || token.isEmpty) return;
+
+    final client = RealtimeClient(
+      baseUrl: ref.read(apiClientProvider).dio.options.baseUrl,
+      accessToken: token,
+    );
+    _realtime = client;
+    client.connect();
+    _realtimeSubscription = client.events.listen((event) {
+      if (!mounted) return;
+      final type = event['event']?.toString() ?? '';
+      final data = event['data'];
+      if (type != 'dispatch.assignment' || data is! Map) return;
+      final assignmentId = data['assignment_id']?.toString();
+      if (assignmentId == null || assignmentId.isEmpty) return;
+
+      setState(() {
+        _realtimeConnected = true;
+        _assignmentId = assignmentId;
+        _assignment = {
+          'id': assignmentId,
+          'emergency_id': data['emergency_id'],
+          'status': data['status'] ?? 'Assigned',
+          'distance_km': data['distance_km'],
+          'eta_minutes': data['eta_minutes'],
+        };
+      });
+    });
   }
 
   Future<void> _changeStatus() async {
@@ -136,6 +178,13 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   }
 
   @override
+  void dispose() {
+    _realtimeSubscription?.cancel();
+    _realtime?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     return Scaffold(
@@ -154,6 +203,12 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
             Text('Responder Dashboard', style: Theme.of(context).textTheme.headlineSmall),
             Text('Role: ${auth.role ?? 'Responder'}'),
             const SizedBox(height: 16),
+            Card(child: ListTile(
+              leading: Icon(_realtimeConnected ? Icons.wifi : Icons.wifi_off),
+              title: Text(_realtimeConnected ? 'Live dispatch channel' : 'Dispatch channel'),
+              subtitle: Text(_realtimeConnected ? 'Waiting for new assignments.' : 'Connecting to dispatch updates...'),
+            )),
+            const SizedBox(height: 8),
             if (_error != null) Card(child: ListTile(
               leading: const Icon(Icons.error_outline),
               title: Text(_error!),
