@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user, require_roles
+from app.modules.auth.dependencies import require_roles
 from app.modules.family.repository import FamilyRepository
 from app.modules.responder.exceptions import (
     AssignmentAlreadyExists,
