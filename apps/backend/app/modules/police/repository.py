@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.database.models.emergency import Emergency
+from app.database.models.emergency_assignment import EmergencyAssignment
 from app.database.models.police_case import PoliceCase
 
 
@@ -10,6 +11,20 @@ class PoliceRepository:
 
     def get_case_by_emergency(self, emergency_id):
         return self.db.query(PoliceCase).filter(PoliceCase.emergency_id == emergency_id).first()
+
+    def get_emergency(self, emergency_id):
+        return self.db.query(Emergency).filter(Emergency.id == emergency_id).first()
+
+    def has_active_assignment(self, emergency_id):
+        return (
+            self.db.query(EmergencyAssignment)
+            .filter(
+                EmergencyAssignment.emergency_id == emergency_id,
+                EmergencyAssignment.status.in_(["Assigned", "Accepted", "EnRoute", "OnScene"]),
+            )
+            .first()
+            is not None
+        )
 
     def get_case(self, case_id):
         return self.db.query(PoliceCase).filter(PoliceCase.id == case_id).first()
