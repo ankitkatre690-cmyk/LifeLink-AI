@@ -13,6 +13,16 @@ from app.modules.dispatch.repository import DispatchRepository
 from app.modules.dispatch.utils import estimate_eta_minutes, haversine_distance_km
 
 
+DISPATCH_STATUS_BY_ASSIGNMENT = {
+    "Assigned": "Assigned",
+    "Accepted": "Accepted",
+    "EnRoute": "EnRoute",
+    "OnScene": "OnScene",
+    "Completed": "Completed",
+    "Cancelled": "Cancelled",
+}
+
+
 class DispatchService:
     def __init__(self, repository: DispatchRepository):
         self.repository = repository
