@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 from app.modules.dispatch.exceptions import (
     DispatchAlreadyExists,
     DispatchNotFound,
@@ -35,7 +35,7 @@ def _ensure_dispatch_role(user: User):
 async def create_dispatch(
     request: DispatchCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_dispatch_role(current_user)
     try:
@@ -58,7 +58,7 @@ async def create_dispatch(
 def get_dispatch(
     dispatch_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_dispatch_role(current_user)
     try:
@@ -71,7 +71,7 @@ def get_dispatch(
 def get_dispatch_logs(
     dispatch_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     _ensure_dispatch_role(current_user)
     try:
