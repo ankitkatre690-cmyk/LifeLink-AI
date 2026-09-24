@@ -35,6 +35,7 @@ ALLOWED_ASSIGNMENT_TRANSITIONS = {
 }
 
 EMERGENCY_STATUS_BY_ASSIGNMENT = {
+    "Assigned": "Assigned",
     "Accepted": "Accepted",
     "EnRoute": "EnRoute",
     "OnScene": "OnScene",
@@ -209,15 +210,25 @@ class ResponderService:
                 f"{previous_status} -> {status}"
             )
 
+        emergency = self.repository.get_emergency(assignment.emergency_id)
+        if emergency is None:
+            raise EmergencyNotFound()
+
+        expected_emergency_status = EMERGENCY_STATUS_BY_ASSIGNMENT.get(previous_status)
+        if (
+            expected_emergency_status is not None
+            and emergency.status != expected_emergency_status
+        ):
+            raise ValueError(
+                "Emergency status is out of sync with the responder assignment."
+            )
+
         assignment.status = status
         if notes is not None:
             assignment.notes = notes
 
         emergency_status = EMERGENCY_STATUS_BY_ASSIGNMENT.get(status)
         if emergency_status is not None:
-            emergency = self.repository.get_emergency(assignment.emergency_id)
-            if emergency is None:
-                raise EmergencyNotFound()
             emergency.status = emergency_status
 
         if status in {"Completed", "Cancelled"}:
