@@ -244,7 +244,11 @@ class ResponderService:
                 dispatch = self.repository.get_dispatch_by_assignment_id(
                     assignment.id
                 )
-                if dispatch is not None and dispatch.resource_id is not None:
+                if (
+                    dispatch is not None
+                    and dispatch.dispatch_status == "Assigned"
+                    and dispatch.resource_id is not None
+                ):
                     resource = self.repository.get_hospital_resource(
                         dispatch.resource_id
                     )
@@ -254,6 +258,7 @@ class ResponderService:
                             resource.available_count + 1,
                         )
                         resource.is_available = resource.available_count > 0
+                    dispatch.dispatch_status = status
 
         self.repository.update_profile()
         return assignment
