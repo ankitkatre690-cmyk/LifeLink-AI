@@ -127,6 +127,12 @@ class ResponderService:
         if emergency is None:
             raise EmergencyNotFound()
 
+        active_assignment = self.repository.get_active_assignment_for_emergency(
+            request.emergency_id
+        )
+        if active_assignment is not None:
+            raise AssignmentAlreadyExists()
+
         existing = self.repository.get_assignment_for_emergency_and_responder(
             request.emergency_id,
             profile.id,
