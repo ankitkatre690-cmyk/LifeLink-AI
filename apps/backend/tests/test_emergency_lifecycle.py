@@ -223,6 +223,7 @@ def test_assignment_status_synchronizes_emergency_status(
     )
 
     assert repository.emergency.status == assignment_status
+    assert repository.dispatch.dispatch_status == assignment_status
 
 
 def test_responder_assignment_rejects_existing_active_assignment():
