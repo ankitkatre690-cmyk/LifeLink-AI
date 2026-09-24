@@ -120,6 +120,7 @@ class ResponderRepository:
         return (
             self.db.query(Dispatch)
             .filter(Dispatch.assignment_id == assignment_id)
+            .with_for_update()
             .first()
         )
 
