@@ -75,9 +75,30 @@ class EmergencyService:
 
         return emergency
 
+    def get_emergency_for_user(
+        self,
+        emergency_id: uuid.UUID,
+        user_id: uuid.UUID,
+        role: str | None,
+    ):
+        emergency = self.repository.get_by_id(emergency_id)
+
+        if emergency is None:
+            raise EmergencyNotFound()
+
+        if not self.repository.user_can_view_emergency(
+            emergency_id,
+            user_id,
+            role,
+        ):
+            raise PermissionError("You are not authorized to view this emergency.")
+
+        return emergency
+
     # ---------------------------------------
     # Update Status
     # ---------------------------------------
+
 
     def update_status(
         self,
