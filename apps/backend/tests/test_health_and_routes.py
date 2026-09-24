@@ -99,3 +99,50 @@ def test_require_roles_rejects_missing_role():
         assert False, "expected HTTPException"
     except HTTPException as exc:
         assert exc.status_code == 403
+
+
+def test_dispatch_object_access_allows_operational_owner():
+    import uuid
+    from app.modules.dispatch.service import DispatchService
+
+    dispatch = type("Dispatch", (), {"id": uuid.uuid4()})()
+
+    class Repository:
+        def get_dispatch(self, dispatch_id):
+            return dispatch
+
+        def user_can_view_dispatch(self, dispatch_id, user_id, role):
+            return role == "Hospital"
+
+        def get_logs(self, dispatch_id):
+            return []
+
+    result = DispatchService(Repository()).get_dispatch_for_user(
+        dispatch.id,
+        uuid.uuid4(),
+        "Hospital",
+    )
+
+    assert result is dispatch
+
+
+def test_dispatch_object_access_rejects_unrelated_role():
+    import uuid
+    import pytest
+    from app.modules.dispatch.service import DispatchService
+
+    dispatch = type("Dispatch", (), {"id": uuid.uuid4()})()
+
+    class Repository:
+        def get_dispatch(self, dispatch_id):
+            return dispatch
+
+        def user_can_view_dispatch(self, dispatch_id, user_id, role):
+            return False
+
+    with pytest.raises(PermissionError, match="not authorized"):
+        DispatchService(Repository()).get_dispatch_for_user(
+            dispatch.id,
+            uuid.uuid4(),
+            "Citizen",
+        )
