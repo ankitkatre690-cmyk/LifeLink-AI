@@ -5,7 +5,9 @@ from sqlalchemy.orm import Session
 from app.database.models.emergency import Emergency
 from app.database.models.emergency_update import EmergencyUpdate
 from app.database.models.emergency_assignment import EmergencyAssignment
-from app.database.models.emergency_assignment import EmergencyAssignment
+from app.database.models.family_group import FamilyGroup
+from app.database.models.family_member import FamilyMember
+from app.database.models.responder_profile import ResponderProfile
 
 
 class EmergencyRepository:
@@ -72,6 +74,37 @@ class EmergencyRepository:
                 }),
             )
             .first()
+        )
+
+    def user_can_view_emergency(self, emergency_id: UUID, user_id: UUID, role: str | None):
+        if role in {"Police", "Admin"}:
+            return True
+
+        if role == "Responder":
+            return (
+                self.db.query(EmergencyAssignment.id)
+                .join(EmergencyAssignment.responder)
+                .filter(
+                    EmergencyAssignment.emergency_id == emergency_id,
+                    ResponderProfile.user_id == user_id,
+                )
+                .first()
+                is not None
+            )
+
+        return (
+            self.db.query(Emergency.id)
+            .outerjoin(FamilyGroup, FamilyGroup.created_by == user_id)
+            .outerjoin(FamilyMember, FamilyMember.family_group_id == FamilyGroup.id)
+            .filter(
+                Emergency.id == emergency_id,
+                (
+                    (Emergency.citizen_id == user_id)
+                    | (FamilyMember.user_id == user_id)
+                ),
+            )
+            .first()
+            is not None
         )
 
     def update(self):
