@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
@@ -21,15 +22,16 @@ class PushNotificationService {
   final ApiClient _api;
   final SecureStorage _storage;
   FirebaseMessaging? _messaging;
+  StreamSubscription<String>? _tokenSubscription;
+  StreamSubscription<RemoteMessage>? _foregroundSubscription;
   bool _initialized = false;
 
-  Future<void> initialize() async {
-    if (_initialized) return;
+  final _messages = StreamController<RemoteMessage>.broadcast();
 
-    if (kIsWeb) {
-      // Web push requires a VAPID key and Firebase web configuration.
-      return;
-    }
+  Stream<RemoteMessage> get foregroundMessages => _messages.stream;
+
+  Future<void> initialize() async {
+    if (_initialized || kIsWeb) return;
 
     await Firebase.initializeApp();
     _messaging = FirebaseMessaging.instance;
@@ -41,12 +43,16 @@ class PushNotificationService {
       provisional: false,
     );
 
+    _foregroundSubscription = FirebaseMessaging.onMessage.listen(
+      _messages.add,
+    );
+
     final token = await _messaging!.getToken();
     if (token != null && token.isNotEmpty) {
       await _registerToken(token);
     }
 
-    _messaging!.onTokenRefresh.listen((refreshedToken) async {
+    _tokenSubscription = _messaging!.onTokenRefresh.listen((refreshedToken) async {
       if (refreshedToken.isNotEmpty) {
         await _registerToken(refreshedToken);
       }
@@ -72,11 +78,18 @@ class PushNotificationService {
   Future<void> unregisterCurrentToken() async {
     final id = await _storage.readDeviceTokenId();
     if (id == null || id.isEmpty) return;
+
     try {
       await _api.dio.delete('/notifications/device-tokens/$id');
     } finally {
       await _storage.clearDeviceTokenId();
     }
+  }
+
+  Future<void> dispose() async {
+    await _tokenSubscription?.cancel();
+    await _foregroundSubscription?.cancel();
+    await _messages.close();
   }
 
   String _platformName() {
@@ -85,4 +98,9 @@ class PushNotificationService {
     if (Platform.isIOS) return 'ios';
     return 'other';
   }
+}
+
+@pragma('vm:entry-point')
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
 }
