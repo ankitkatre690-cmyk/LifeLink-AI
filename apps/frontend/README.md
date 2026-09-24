@@ -76,3 +76,10 @@ If platform folders have not been generated yet, run `flutter create .` from `ap
 5. Firebase Messaging and device-token registration
 6. Authenticated WebSocket events
 7. End-to-end emergency workflow
+
+
+### Responder realtime dispatch
+
+The Responder dashboard listens for the existing `dispatch.assignment` realtime event. When received, it immediately displays the assignment ID, emergency ID, status, distance, and ETA. Assignment status changes continue through the existing responder REST endpoint.
+
+The realtime backend/dispatch implementation is maintained on its dedicated backend feature branches and must be integrated into the release branch before this frontend listener can receive production dispatch events.
