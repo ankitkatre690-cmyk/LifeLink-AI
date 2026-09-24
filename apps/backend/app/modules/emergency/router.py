@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
+from app.modules.family.repository import FamilyRepository
 from app.database.session import get_db
 from app.modules.auth.dependencies import get_current_user
 from app.modules.emergency.exceptions import EmergencyNotFound
