@@ -87,3 +87,7 @@ The realtime backend/dispatch implementation is maintained on its dedicated back
 ### Hospital dashboard
 
 The Hospital dashboard uses the existing hospital profile and resource APIs. It also listens for the existing `dispatch.hospital_incoming` realtime event and displays incoming emergency notifications. Resource availability is updated through the existing hospital resource endpoint.
+
+### Police dashboard
+
+The Police dashboard uses the existing police workflow: active emergency queue, police case creation, case status updates, and dispatch requests. It does not create a separate emergency or dispatch domain.
