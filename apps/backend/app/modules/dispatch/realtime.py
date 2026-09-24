@@ -2,8 +2,8 @@ from app.realtime.events import build_event
 from app.realtime.manager import connection_manager
 
 
-async def publish_dispatch_events(dispatch):
-    """Publish the canonical realtime events for a successful dispatch."""
+async def publish_dispatch_events(dispatch, family_user_ids=()):
+    """Publish dispatch events only to users authorized for the emergency."""
     await connection_manager.send_to_user(
         dispatch.emergency.citizen_id,
         build_event("dispatch.assigned", {
@@ -16,6 +16,16 @@ async def publish_dispatch_events(dispatch):
             "status": dispatch.dispatch_status,
         }),
     )
+
+    for user_id in family_user_ids:
+        await connection_manager.send_to_user(
+            user_id,
+            build_event("dispatch.family_update", {
+                "dispatch_id": str(dispatch.id),
+                "emergency_id": str(dispatch.emergency_id),
+                "status": dispatch.dispatch_status,
+            }),
+        )
 
     await connection_manager.send_to_user(
         dispatch.assignment.responder.user_id,
