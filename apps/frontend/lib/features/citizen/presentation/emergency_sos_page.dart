@@ -54,7 +54,7 @@ class _EmergencySosPageState extends ConsumerState<EmergencySosPage> {
 
     try {
       final position =
-          await const LocationService().getCurrentEmergencyLocation();
+          await const LocationService().getCurrentPosition();
       final emergency = await ref.read(emergencyApiProvider).createEmergency(
             emergencyType: 'GeneralSOS',
             latitude: position.latitude,
@@ -70,7 +70,7 @@ class _EmergencySosPageState extends ConsumerState<EmergencySosPage> {
           ),
         ),
       );
-    } on LocationServiceException catch (error) {
+    } on LocationException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } on DioException catch (error) {
       if (mounted) {
