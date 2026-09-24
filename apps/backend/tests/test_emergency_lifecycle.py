@@ -340,3 +340,26 @@ def test_hospital_resource_availability_is_derived_from_count():
     resource = Resource()
     resource.is_available = resource.available_count > 0
     assert resource.is_available is False
+
+
+def test_terminal_assignment_release_is_guarded_by_previous_status():
+    resource = FakeResource(available_count=0, total_count=1)
+    repository = FakeCompletionRepository(resource)
+    service = ResponderService(repository)
+
+    service.update_assignment(
+        FakeUser(),
+        repository.assignment.id,
+        "Completed",
+        None,
+    )
+    assert resource.available_count == 1
+
+    # A repeated terminal transition must not reserve/release inventory again.
+    service.update_assignment(
+        FakeUser(),
+        repository.assignment.id,
+        "Completed",
+        None,
+    )
+    assert resource.available_count == 1
