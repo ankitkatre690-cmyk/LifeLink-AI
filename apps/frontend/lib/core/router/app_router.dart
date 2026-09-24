@@ -1,49 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
-  routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const _WelcomePage(),
-    ),
-  ],
-);
+import '../auth/auth_state.dart';
+import '../../features/auth/presentation/login_page.dart';
+import '../../features/home/presentation/home_page.dart';
 
-class _WelcomePage extends StatelessWidget {
-  const _WelcomePage();
+GoRouter buildAppRouter(AuthState auth) {
+  return GoRouter(
+    initialLocation: auth.isAuthenticated ? '/home' : '/login',
+    redirect: (context, state) {
+      final isLogin = state.matchedLocation == '/login';
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('LifeLink AI')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.health_and_safety_outlined,
-                size: 72,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'LifeLink AI',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Personal safety and emergency response platform',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ],
-          ),
-        ),
+      if (auth.isLoading) return null;
+      if (!auth.isAuthenticated && !isLogin) return '/login';
+      if (auth.isAuthenticated && isLogin) return '/home';
+
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginPage(),
       ),
-    );
-  }
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const HomePage(),
+      ),
+    ],
+  );
 }
