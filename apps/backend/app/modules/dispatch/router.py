@@ -50,6 +50,8 @@ async def create_dispatch(
         raise HTTPException(409, "No available responder with a current location.")
     except NoAvailableHospitalResource:
         raise HTTPException(409, "No hospital has an available resource.")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
 
 
 @router.get("/{dispatch_id}", response_model=DispatchResponse)
