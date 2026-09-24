@@ -70,6 +70,8 @@ class HospitalService:
             raise HospitalResourceNotFound()
         if request.available_count > request.total_count:
             raise InvalidResourceCount()
+        if request.total_count < 0 or request.available_count < 0:
+            raise InvalidResourceCount()
         resource.total_count = request.total_count
         resource.available_count = request.available_count
         resource.is_available = request.is_available and request.available_count > 0
