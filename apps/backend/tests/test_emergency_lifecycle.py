@@ -98,3 +98,76 @@ def test_police_case_lifecycle_has_terminal_states():
     assert ALLOWED_CASE_TRANSITIONS["Open"] == {"Closed", "Cancelled"}
     assert ALLOWED_CASE_TRANSITIONS["Closed"] == set()
     assert ALLOWED_CASE_TRANSITIONS["Cancelled"] == set()
+
+
+class FakeResource:
+    def __init__(self, available_count, total_count):
+        self.available_count = available_count
+        self.total_count = total_count
+        self.is_available = available_count > 0
+
+
+class FakeDispatch:
+    def __init__(self, resource_id):
+        self.resource_id = resource_id
+
+
+class FakeAssignment:
+    def __init__(self, status="OnScene"):
+        self.id = uuid.uuid4()
+        self.status = status
+        self.responder_id = uuid.uuid4()
+
+
+class FakeCompletionRepository:
+    def __init__(self, resource):
+        self.profile = type(
+            "Profile",
+            (),
+            {"id": uuid.uuid4(), "status": "Busy"},
+        )()
+        self.assignment = FakeAssignment()
+        self.resource = resource
+        self.dispatch = FakeDispatch(uuid.uuid4())
+
+    def get_assignment(self, assignment_id):
+        return self.assignment
+
+    def get_profile_by_user_id(self, user_id):
+        return self.profile
+
+    def get_dispatch_by_assignment_id(self, assignment_id):
+        return self.dispatch
+
+    def get_hospital_resource(self, resource_id):
+        return self.resource
+
+    def update_profile(self):
+        return None
+
+
+@pytest.mark.parametrize("terminal_status", ["Completed", "Cancelled"])
+def test_terminal_assignment_releases_hospital_resource_once(terminal_status):
+    resource = FakeResource(available_count=0, total_count=1)
+    repository = FakeCompletionRepository(resource)
+    service = ResponderService(repository)
+
+    service.update_assignment(
+        FakeUser(),
+        repository.assignment.id,
+        terminal_status,
+        None,
+    )
+
+    assert repository.profile.status == "Available"
+    assert resource.available_count == 1
+    assert resource.is_available is True
+
+    service.update_assignment(
+        FakeUser(),
+        repository.assignment.id,
+        terminal_status,
+        None,
+    )
+
+    assert resource.available_count == 1
