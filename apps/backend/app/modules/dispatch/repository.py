@@ -19,6 +19,14 @@ class DispatchRepository:
     def get_emergency(self, emergency_id: uuid.UUID):
         return self.db.query(Emergency).filter(Emergency.id == emergency_id).first()
 
+    def get_emergency_for_update(self, emergency_id: uuid.UUID):
+        return (
+            self.db.query(Emergency)
+            .filter(Emergency.id == emergency_id)
+            .with_for_update()
+            .first()
+        )
+
     def get_dispatch_for_emergency(self, emergency_id: uuid.UUID):
         return self.db.query(Dispatch).filter(
             Dispatch.emergency_id == emergency_id
