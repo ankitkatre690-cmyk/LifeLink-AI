@@ -53,3 +53,11 @@ def test_police_service_has_emergency_lifecycle_guards():
     from app.modules.police.service import PoliceService
     assert hasattr(PoliceService, "create_case")
     assert hasattr(PoliceService, "update_case")
+
+
+def test_emergency_status_machine_defines_terminal_states():
+    from app.modules.emergency.service import ALLOWED_STATUS_TRANSITIONS
+
+    assert ALLOWED_STATUS_TRANSITIONS["OnScene"] == {"Completed", "Cancelled"}
+    assert ALLOWED_STATUS_TRANSITIONS["Completed"] == set()
+    assert ALLOWED_STATUS_TRANSITIONS["Cancelled"] == set()
