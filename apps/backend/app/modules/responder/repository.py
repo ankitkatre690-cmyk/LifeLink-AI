@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database.models.emergency import Emergency
@@ -8,6 +9,7 @@ from app.database.models.emergency_assignment import EmergencyAssignment
 from app.database.models.hospital_resource import HospitalResource
 from app.database.models.responder_location import ResponderLocation
 from app.database.models.responder_profile import ResponderProfile
+from app.modules.responder.exceptions import AssignmentAlreadyExists
 
 
 class ResponderRepository:
@@ -110,6 +112,12 @@ class ResponderRepository:
 
     def create_assignment(self, assignment: EmergencyAssignment):
         self.db.add(assignment)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            if "uq_emergency_assignments_active_emergency" in str(exc.orig):
+                raise AssignmentAlreadyExists() from exc
+            raise
         self.db.refresh(assignment)
         return assignment
