@@ -60,9 +60,12 @@ class ResponderRepository:
         )
 
     def get_assignment(self, assignment_id: uuid.UUID):
+        # Serialize assignment lifecycle updates so two concurrent terminal
+        # transitions cannot both release the same hospital reservation.
         return (
             self.db.query(EmergencyAssignment)
             .filter(EmergencyAssignment.id == assignment_id)
+            .with_for_update()
             .first()
         )
 
