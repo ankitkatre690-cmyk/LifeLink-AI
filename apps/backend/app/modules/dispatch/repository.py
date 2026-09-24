@@ -22,6 +22,18 @@ class DispatchRepository:
             Dispatch.emergency_id == emergency_id
         ).first()
 
+    def get_active_assignment_for_emergency(self, emergency_id: uuid.UUID):
+        return (
+            self.db.query(EmergencyAssignment)
+            .filter(
+                EmergencyAssignment.emergency_id == emergency_id,
+                EmergencyAssignment.status.in_(
+                    ["Assigned", "Accepted", "EnRoute", "OnScene"]
+                ),
+            )
+            .first()
+        )
+
     def get_available_responders(self):
         return (
             self.db.query(ResponderProfile)
