@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_client.dart';
+import '../notifications/push_notification_service.dart';
 import '../realtime/realtime_provider.dart';
 import '../storage/secure_storage.dart';
 
@@ -72,6 +73,11 @@ class AuthController extends Notifier<AuthState> {
 
       await _storage.saveSession(accessToken: token, role: role);
       ref.read(realtimeServiceProvider).connect(token);
+      try {
+        await ref.read(pushNotificationServiceProvider).initialize();
+      } catch (_) {
+        // Push configuration must not block authentication.
+      }
       state = AuthState(isAuthenticated: true, role: role);
     } catch (_) {
       await logout();
@@ -111,6 +117,11 @@ class AuthController extends Notifier<AuthState> {
 
       await _storage.saveSession(accessToken: token, role: role);
       ref.read(realtimeServiceProvider).connect(token);
+      try {
+        await ref.read(pushNotificationServiceProvider).initialize();
+      } catch (_) {
+        // Push configuration must not block authentication.
+      }
       state = AuthState(isAuthenticated: true, role: role);
       return true;
     } catch (_) {
@@ -125,6 +136,11 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    try {
+      await ref.read(pushNotificationServiceProvider).unregisterCurrentToken();
+    } catch (_) {
+      // Logout must succeed even if push cleanup is unavailable.
+    }
     await ref.read(realtimeServiceProvider).disconnect();
     await _storage.clearSession();
     _api.clearAccessToken();
