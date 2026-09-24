@@ -201,6 +201,7 @@ async def update_assignment(
             "EnRoute": "EnRoute",
             "OnScene": "OnScene",
             "Completed": "Completed",
+            "Cancelled": "Cancelled",
         }
         emergency_status = emergency_status_by_assignment.get(assignment.status)
         if emergency_status is not None:
