@@ -22,7 +22,25 @@ Override the API base URL through the application's configuration layer before p
 
 ## Current phase
 
-This PR establishes the frontend foundation only. It intentionally does not yet implement authentication, Firebase Messaging, WebSockets, or role dashboards.
+The frontend foundation now includes authentication, role-aware routing, a Citizen dashboard, and permission-aware device location for emergency SOS. Firebase Messaging and WebSockets remain separate increments.
+
+### Location platform configuration
+
+The repository intentionally does not commit generated Flutter platform folders yet. Before running the Android app, ensure the Android application manifest contains:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+```
+
+For iOS, add the location usage description to `Info.plist`:
+
+```xml
+<key>NSLocationWhenInUseUsageDescription</key>
+<string>LifeLink AI uses your location to share your position during an emergency.</string>
+```
+
+Do not request background location for the current SOS flow. Background tracking will be designed separately if required.
 
 ## Local setup
 
