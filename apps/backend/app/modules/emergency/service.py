@@ -68,7 +68,7 @@ class EmergencyService:
         emergency_id: uuid.UUID,
     ):
 
-        emergency = self.repository.get_by_id_for_update(emergency_id)
+        emergency = self.repository.get_by_id(emergency_id)
 
         if emergency is None:
             raise EmergencyNotFound()
@@ -87,7 +87,7 @@ class EmergencyService:
         actor_role: str | None = None,
     ):
 
-        emergency = self.repository.get_by_id(emergency_id)
+        emergency = self.repository.get_by_id_for_update(emergency_id)
 
         if emergency is None:
             raise EmergencyNotFound()
