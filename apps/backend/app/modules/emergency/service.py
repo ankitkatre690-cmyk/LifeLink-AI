@@ -84,6 +84,7 @@ class EmergencyService:
         emergency_id: uuid.UUID,
         user_id: uuid.UUID,
         request: EmergencyUpdateRequest,
+        actor_role: str | None = None,
     ):
 
         emergency = self.repository.get_by_id(emergency_id)
@@ -92,6 +93,12 @@ class EmergencyService:
             raise EmergencyNotFound()
 
         current_status = emergency.status
+
+        if actor_role == "Police" and request.status != "Cancelled":
+            raise ValueError(
+                "Police users can only cancel emergencies through the generic status endpoint."
+            )
+
         if request.status != current_status and request.status not in ALLOWED_STATUS_TRANSITIONS.get(
             current_status, set()
         ):
