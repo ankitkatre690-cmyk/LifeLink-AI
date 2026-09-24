@@ -81,13 +81,10 @@ def get_emergency(
         emergency = service.get_emergency(emergency_id)
         if (
             emergency.citizen_id != current_user.id
-            and current_user.role is not None
-            and current_user.role.name not in {"Police", "Admin", "Responder"}
-        ):
-            raise HTTPException(403, "You are not authorized to view this emergency.")
-        if (
-            emergency.citizen_id != current_user.id
-            and (current_user.role is None or current_user.role.name not in {"Police", "Admin", "Responder"})
+            and (
+                current_user.role is None
+                or current_user.role.name not in {"Police", "Admin", "Responder"}
+            )
         ):
             raise HTTPException(403, "You are not authorized to view this emergency.")
         return emergency
