@@ -1,15 +1,58 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/notifications/push_notification_service.dart';
 import 'emergency_sos_page.dart';
 
-class CitizenHomePage extends ConsumerWidget {
+class CitizenHomePage extends ConsumerStatefulWidget {
   const CitizenHomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CitizenHomePage> createState() => _CitizenHomePageState();
+}
+
+class _CitizenHomePageState extends ConsumerState<CitizenHomePage> {
+  StreamSubscription<RemoteMessage>? _notificationSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_listenForNotifications);
+  }
+
+  void _listenForNotifications() {
+    final service = ref.read(pushNotificationServiceProvider);
+    _notificationSubscription = service.foregroundMessages.listen((message) {
+      if (!mounted) return;
+
+      final title = message.notification?.title ?? 'LifeLink AI';
+      final body = message.notification?.body ?? 'New emergency update received.';
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('$title: $body'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('LifeLink AI'),
