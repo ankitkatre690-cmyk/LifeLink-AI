@@ -1,5 +1,6 @@
 import uuid
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database.models.dispatch import Dispatch, DispatchLog
@@ -8,6 +9,7 @@ from app.database.models.emergency_assignment import EmergencyAssignment
 from app.database.models.hospital import Hospital
 from app.database.models.hospital_resource import HospitalResource
 from app.database.models.responder_profile import ResponderProfile
+from app.modules.dispatch.exceptions import DispatchAlreadyExists
 
 
 class DispatchRepository:
@@ -65,7 +67,13 @@ class DispatchRepository:
 
     def create_assignment(self, assignment: EmergencyAssignment):
         self.db.add(assignment)
-        self.db.flush()
+        try:
+            self.db.flush()
+        except IntegrityError as exc:
+            self.db.rollback()
+            if "uq_emergency_assignments_active_emergency" in str(exc.orig):
+                raise DispatchAlreadyExists() from exc
+            raise
         return assignment
 
     def create_dispatch(self, dispatch: Dispatch):
