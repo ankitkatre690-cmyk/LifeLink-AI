@@ -83,3 +83,9 @@ class FamilyRepository:
 
         self.db.delete(member)
         self.db.commit()
+
+    def get_member_user_ids_for_creator(self, creator_id):
+        family = self.get_family_by_creator(creator_id)
+        if family is None:
+            return []
+        return [member.user_id for member in self.get_members(family.id)]
