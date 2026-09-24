@@ -24,6 +24,9 @@ class FakeDispatchRepository:
     def get_emergency(self, emergency_id):
         return self.emergency
 
+    def get_emergency_for_update(self, emergency_id):
+        return self.emergency
+
     def get_dispatch_for_emergency(self, emergency_id):
         self.dispatch_lookup_called = True
         return None
@@ -42,6 +45,9 @@ class FakeResponderRepository:
         return self.profile
 
     def get_emergency(self, emergency_id):
+        return self.emergency
+
+    def get_emergency_for_update(self, emergency_id):
         return self.emergency
 
     def get_assignment_for_emergency_and_responder(self, emergency_id, responder_id):
@@ -139,6 +145,9 @@ class FakeCompletionRepository:
         return self.assignment
 
     def get_emergency(self, emergency_id):
+        return self.emergency
+
+    def get_emergency_for_update(self, emergency_id):
         return self.emergency
 
     def get_profile_by_user_id(self, user_id):
@@ -276,6 +285,9 @@ class FailingDispatchRepository:
         self.rollback_called = False
 
     def get_emergency(self, emergency_id):
+        return self.emergency
+
+    def get_emergency_for_update(self, emergency_id):
         return self.emergency
 
     def get_dispatch_for_emergency(self, emergency_id):
@@ -433,6 +445,9 @@ class FakeEmergencyStatusRepository:
         self.updated = False
 
     def get_by_id(self, emergency_id):
+        return self.emergency
+
+    def get_by_id_for_update(self, emergency_id):
         return self.emergency
 
     def get_active_assignment_for_emergency(self, emergency_id):
