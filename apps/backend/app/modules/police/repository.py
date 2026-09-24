@@ -29,6 +29,22 @@ class PoliceRepository:
     def get_case(self, case_id):
         return self.db.query(PoliceCase).filter(PoliceCase.id == case_id).first()
 
+    def user_can_access_case(self, case_id, user_id, role):
+        if role == "Admin":
+            return True
+        if role != "Police":
+            return False
+
+        return (
+            self.db.query(PoliceCase.id)
+            .filter(
+                PoliceCase.id == case_id,
+                PoliceCase.police_user_id == user_id,
+            )
+            .first()
+            is not None
+        )
+
     def list_active_emergencies(self):
         return (
             self.db.query(Emergency)
