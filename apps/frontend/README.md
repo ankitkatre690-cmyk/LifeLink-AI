@@ -83,3 +83,7 @@ If platform folders have not been generated yet, run `flutter create .` from `ap
 The Responder dashboard listens for the existing `dispatch.assignment` realtime event. When received, it immediately displays the assignment ID, emergency ID, status, distance, and ETA. Assignment status changes continue through the existing responder REST endpoint.
 
 The realtime backend/dispatch implementation is maintained on its dedicated backend feature branches and must be integrated into the release branch before this frontend listener can receive production dispatch events.
+
+### Hospital dashboard
+
+The Hospital dashboard uses the existing hospital profile and resource APIs. It also listens for the existing `dispatch.hospital_incoming` realtime event and displays incoming emergency notifications. Resource availability is updated through the existing hospital resource endpoint.
