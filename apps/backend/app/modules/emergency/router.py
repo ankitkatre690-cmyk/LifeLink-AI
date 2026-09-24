@@ -134,6 +134,7 @@ async def update_status(
             emergency_id,
             current_user.id,
             request,
+            current_user.role.name,
         )
         event = build_event("emergency.status_changed", {
             "emergency_id": str(emergency.id),
