@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_client.dart';
+import '../realtime/realtime_provider.dart';
 import '../storage/secure_storage.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
@@ -70,6 +71,7 @@ class AuthController extends Notifier<AuthState> {
       }
 
       await _storage.saveSession(accessToken: token, role: role);
+      ref.read(realtimeServiceProvider).connect(token);
       state = AuthState(isAuthenticated: true, role: role);
     } catch (_) {
       await logout();
@@ -108,6 +110,7 @@ class AuthController extends Notifier<AuthState> {
       }
 
       await _storage.saveSession(accessToken: token, role: role);
+      ref.read(realtimeServiceProvider).connect(token);
       state = AuthState(isAuthenticated: true, role: role);
       return true;
     } catch (_) {
@@ -122,6 +125,7 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    await ref.read(realtimeServiceProvider).disconnect();
     await _storage.clearSession();
     _api.clearAccessToken();
     state = const AuthState();
