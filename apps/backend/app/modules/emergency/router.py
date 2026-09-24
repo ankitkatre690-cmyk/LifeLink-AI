@@ -40,6 +40,9 @@ async def create_emergency(
     current_user: User = Depends(get_current_user),
 ):
     service = EmergencyService(EmergencyRepository(db))
+    if current_user.role is None or current_user.role.name != "Citizen":
+        raise HTTPException(403, "Only Citizen users can create emergencies.")
+
     emergency = service.create_emergency(current_user.id, request)
 
     event = build_event("emergency.created", {
@@ -70,11 +73,24 @@ async def create_emergency(
 def get_emergency(
     emergency_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     service = EmergencyService(EmergencyRepository(db))
 
     try:
-        return service.get_emergency(emergency_id)
+        emergency = service.get_emergency(emergency_id)
+        if (
+            emergency.citizen_id != current_user.id
+            and current_user.role is not None
+            and current_user.role.name not in {"Police", "Admin", "Responder"}
+        ):
+            raise HTTPException(403, "You are not authorized to view this emergency.")
+        if (
+            emergency.citizen_id != current_user.id
+            and (current_user.role is None or current_user.role.name not in {"Police", "Admin", "Responder"})
+        ):
+            raise HTTPException(403, "You are not authorized to view this emergency.")
+        return emergency
 
     except EmergencyNotFound:
         raise HTTPException(
@@ -100,6 +116,23 @@ async def update_status(
     service = EmergencyService(EmergencyRepository(db))
 
     try:
+        emergency = service.get_emergency(emergency_id)
+
+        if current_user.role is None:
+            raise HTTPException(403, "You are not authorized to update this emergency.")
+
+        if current_user.role.name == "Citizen":
+            if emergency.citizen_id != current_user.id or request.status != "Cancelled":
+                raise HTTPException(
+                    403,
+                    "Citizens can only cancel their own emergencies.",
+                )
+        elif current_user.role.name not in {"Police", "Admin"}:
+            raise HTTPException(
+                403,
+                "Use the responder assignment workflow to update responder-managed status.",
+            )
+
         emergency = service.update_status(
             emergency_id,
             current_user.id,
