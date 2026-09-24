@@ -113,7 +113,30 @@ class DispatchService:
             raise DispatchNotFound()
         return dispatch
 
-    def get_logs(self, dispatch_id: uuid.UUID):
-        if self.repository.get_dispatch(dispatch_id) is None:
+    def get_dispatch_for_user(
+        self,
+        dispatch_id: uuid.UUID,
+        user_id: uuid.UUID,
+        role: str | None,
+    ):
+        dispatch = self.repository.get_dispatch(dispatch_id)
+        if dispatch is None:
             raise DispatchNotFound()
+
+        if not self.repository.user_can_view_dispatch(
+            dispatch_id,
+            user_id,
+            role,
+        ):
+            raise PermissionError("You are not authorized to view this dispatch.")
+
+        return dispatch
+
+    def get_logs_for_user(
+        self,
+        dispatch_id: uuid.UUID,
+        user_id: uuid.UUID,
+        role: str | None,
+    ):
+        self.get_dispatch_for_user(dispatch_id, user_id, role)
         return self.repository.get_logs(dispatch_id)
