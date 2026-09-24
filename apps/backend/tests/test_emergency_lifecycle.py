@@ -117,8 +117,9 @@ class FakeResource:
 
 
 class FakeDispatch:
-    def __init__(self, resource_id):
+    def __init__(self, resource_id, dispatch_status="Assigned"):
         self.resource_id = resource_id
+        self.dispatch_status = dispatch_status
 
 
 class FakeAssignment:
@@ -188,6 +189,7 @@ def test_terminal_assignment_releases_hospital_resource_once(terminal_status):
     )
 
     assert resource.available_count == 1
+    assert repository.dispatch.dispatch_status == terminal_status
 
 
 @pytest.mark.parametrize(
@@ -377,10 +379,11 @@ def test_terminal_assignment_release_is_guarded_by_previous_status():
     service.update_assignment(
         FakeUser(),
         repository.assignment.id,
-        "Completed",
+        terminal_status,
         None,
     )
     assert resource.available_count == 1
+    assert repository.dispatch.dispatch_status == terminal_status
 
 
 @pytest.mark.parametrize("status", ["Available", "Offline"])
@@ -502,3 +505,19 @@ def test_generic_emergency_cancellation_allows_no_active_assignment():
 
     assert result.status == "Cancelled"
     assert repository.updated is True
+
+
+def test_terminal_assignment_does_not_release_already_closed_dispatch():
+    resource = FakeResource(available_count=1, total_count=1)
+    repository = FakeCompletionRepository(resource)
+    repository.dispatch.dispatch_status = "Cancelled"
+
+    ResponderService(repository).update_assignment(
+        FakeUser(),
+        repository.assignment.id,
+        "Completed",
+        None,
+    )
+
+    assert resource.available_count == 1
+    assert repository.dispatch.dispatch_status == "Cancelled"
