@@ -71,9 +71,16 @@ def get_case(
 ):
     _ensure_police(current_user)
     try:
-        return PoliceService(PoliceRepository(db)).get_case(case_id)
+        role = current_user.role.name if current_user.role else None
+        return PoliceService(PoliceRepository(db)).get_case_for_user(
+            case_id,
+            current_user.id,
+            role,
+        )
     except PoliceCaseNotFound:
         raise HTTPException(404, "Police case not found.")
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc))
 
 
 @router.patch("/cases/{case_id}", response_model=PoliceCaseResponse)
@@ -85,9 +92,17 @@ def update_case(
 ):
     _ensure_police(current_user)
     try:
-        return PoliceService(PoliceRepository(db)).update_case(case_id, request)
+        role = current_user.role.name if current_user.role else None
+        return PoliceService(PoliceRepository(db)).update_case(
+            case_id,
+            request,
+            current_user.id,
+            role,
+        )
     except PoliceCaseNotFound:
         raise HTTPException(404, "Police case not found.")
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc))
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
     except ValueError as exc:
