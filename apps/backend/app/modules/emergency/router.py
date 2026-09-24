@@ -121,6 +121,8 @@ async def update_status(
             status_code=404,
             detail="Emergency not found.",
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
 
 # ---------------------------------------
