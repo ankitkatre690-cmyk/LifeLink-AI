@@ -71,6 +71,8 @@ class DispatchService:
             responder.status = "Busy"
             emergency.status = "Assigned"
 
+            if resource.available_count <= 0:
+                raise NoAvailableHospitalResource()
             resource.available_count -= 1
             resource.is_available = resource.available_count > 0
 
