@@ -363,3 +363,24 @@ def test_terminal_assignment_release_is_guarded_by_previous_status():
         None,
     )
     assert resource.available_count == 1
+
+
+def test_responder_cannot_become_available_with_active_assignment():
+    emergency = FakeEmergency("Assigned")
+    repository = FakeResponderRepository(emergency, profile_status="Busy")
+    repository.get_active_assignment_for_responder = lambda responder_id: FakeAssignment(
+        status="Assigned"
+    )
+
+    with pytest.raises(ValueError, match="active assignment exists"):
+        ResponderService(repository).update_status(FakeUser(), "Available")
+
+
+def test_responder_can_become_available_without_active_assignment():
+    emergency = FakeEmergency("Pending")
+    repository = FakeResponderRepository(emergency, profile_status="Busy")
+    repository.get_active_assignment_for_responder = lambda responder_id: None
+
+    profile = ResponderService(repository).update_status(FakeUser(), "Available")
+
+    assert profile.status == "Available"
