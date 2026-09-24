@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
@@ -46,21 +47,13 @@ class _CitizenDashboardPageState
 
       if (!mounted) return;
 
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Emergency created'),
-          content: Text(
-            'Emergency ID: ${emergency['id'] ?? 'created'}',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      final emergencyId = emergency['id']?.toString();
+      if (emergencyId == null || emergencyId.isEmpty) {
+        throw const FormatException('Emergency response has no ID.');
+      }
+
+      if (!mounted) return;
+      context.go('/citizen/emergency/$emergencyId');
     } on LocationException catch (error) {
       if (!mounted) return;
 
