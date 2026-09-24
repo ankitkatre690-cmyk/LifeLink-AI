@@ -7,6 +7,7 @@ from app.modules.dispatch.service import DispatchService
 from app.modules.police.service import ALLOWED_CASE_TRANSITIONS
 from app.modules.responder.exceptions import AssignmentAlreadyExists
 from app.modules.responder.service import ResponderService
+from app.modules.emergency.service import EmergencyService
 
 
 class FakeEmergency:
@@ -423,3 +424,66 @@ def test_assignment_update_rejects_out_of_sync_terminal_emergency():
     assert repository.emergency.status == "Cancelled"
     assert repository.profile.status == "Busy"
     assert resource.available_count == 0
+
+
+class FakeEmergencyStatusRepository:
+    def __init__(self, emergency, active_assignment=None):
+        self.emergency = emergency
+        self.active_assignment = active_assignment
+        self.updated = False
+
+    def get_by_id(self, emergency_id):
+        return self.emergency
+
+    def get_active_assignment_for_emergency(self, emergency_id):
+        return self.active_assignment
+
+    def update(self):
+        self.updated = True
+
+    def create_update(self, update):
+        return update
+
+
+def test_generic_emergency_cancellation_rejects_active_assignment():
+    emergency = FakeEmergency("Assigned")
+    repository = FakeEmergencyStatusRepository(
+        emergency,
+        active_assignment=FakeAssignment(status="Assigned"),
+    )
+    request = type(
+        "Request",
+        (),
+        {"status": "Cancelled", "remarks": "Police cancellation"},
+    )()
+
+    with pytest.raises(ValueError, match="active responder assignment exists"):
+        EmergencyService(repository).update_status(
+            emergency.id,
+            uuid.uuid4(),
+            request,
+            actor_role="Police",
+        )
+
+    assert emergency.status == "Assigned"
+    assert repository.updated is False
+
+
+def test_generic_emergency_cancellation_allows_no_active_assignment():
+    emergency = FakeEmergency("Assigned")
+    repository = FakeEmergencyStatusRepository(emergency)
+    request = type(
+        "Request",
+        (),
+        {"status": "Cancelled", "remarks": "Citizen cancellation"},
+    )()
+
+    result = EmergencyService(repository).update_status(
+        emergency.id,
+        uuid.uuid4(),
+        request,
+        actor_role="Citizen",
+    )
+
+    assert result.status == "Cancelled"
+    assert repository.updated is True
