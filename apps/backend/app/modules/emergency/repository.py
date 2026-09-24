@@ -64,18 +64,6 @@ class EmergencyRepository:
             .first()
         )
 
-    def get_active_assignment_for_emergency(self, emergency_id: UUID):
-        return (
-            self.db.query(EmergencyAssignment)
-            .filter(
-                EmergencyAssignment.emergency_id == emergency_id,
-                EmergencyAssignment.status.in_(
-                    {"Assigned", "Accepted", "EnRoute", "OnScene"}
-                ),
-            )
-            .first()
-        )
-
     def user_can_view_emergency(
         self,
         emergency_id: UUID,
