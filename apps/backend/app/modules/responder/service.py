@@ -93,13 +93,13 @@ class ResponderService:
         if profile is None:
             raise ResponderProfileNotFound()
 
-        if status == "Available":
+        if status in {"Available", "Offline"}:
             active_assignment = self.repository.get_active_assignment_for_responder(
                 profile.id
             )
             if active_assignment is not None:
                 raise ValueError(
-                    "Responder cannot become Available while an active assignment exists."
+                    f"Responder cannot become {status} while an active assignment exists."
                 )
 
         profile.status = status
