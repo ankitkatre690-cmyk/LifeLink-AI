@@ -19,6 +19,15 @@ def test_composed_routes_are_registered(client):
         "/api/v1/police/emergencies/active",
         "/api/v1/admin/dashboard",
         "/api/v1/ai/risk-assessment",
+        "/api/v1/emergency",
+        "/api/v1/family",
+        "/api/v1/family/members",
+        "/api/v1/responders/me",
+        "/api/v1/responders/me/status",
+        "/api/v1/responders/me/location",
+        "/api/v1/hospitals/me",
+        "/api/v1/notifications",
+        "/api/v1/notifications/device-tokens",
     ]
     for path in expected:
         assert path in paths, path
