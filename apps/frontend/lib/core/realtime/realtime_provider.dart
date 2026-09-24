@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../auth/auth_state.dart';
 import 'websocket_service.dart';
 
 final realtimeServiceProvider = Provider<WebSocketService>((ref) {
