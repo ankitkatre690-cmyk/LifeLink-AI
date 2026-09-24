@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from app.modules.dispatch.exceptions import DispatchAlreadyExists
+from app.modules.dispatch.exceptions import DispatchAlreadyExists, NoAvailableHospitalResource
 from app.modules.dispatch.service import DispatchService
 from app.modules.police.service import ALLOWED_CASE_TRANSITIONS
 from app.modules.responder.exceptions import AssignmentAlreadyExists
@@ -325,7 +325,7 @@ def test_dispatch_never_decrements_an_exhausted_resource():
 
     repository = ExhaustedRepository()
 
-    with pytest.raises(Exception):
+    with pytest.raises(NoAvailableHospitalResource):
         DispatchService(repository).dispatch_emergency(repository.emergency.id)
 
     assert repository.resource.available_count == 0
