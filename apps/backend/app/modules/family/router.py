@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 from app.modules.family.exceptions import (
     FamilyAlreadyExists,
     FamilyMemberAlreadyExists,
@@ -39,7 +39,7 @@ router = APIRouter(
 def create_family(
     request: FamilyCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = FamilyService(FamilyRepository(db))
@@ -67,7 +67,7 @@ def create_family(
 )
 def get_family(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = FamilyService(FamilyRepository(db))
@@ -92,7 +92,7 @@ def get_family(
 )
 def delete_family(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = FamilyService(FamilyRepository(db))
@@ -119,7 +119,7 @@ def delete_family(
 def add_member(
     request: FamilyMemberCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = FamilyService(FamilyRepository(db))
@@ -153,7 +153,7 @@ def add_member(
 )
 def get_members(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = FamilyService(FamilyRepository(db))
@@ -179,7 +179,7 @@ def get_members(
 def remove_member(
     user_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = FamilyService(FamilyRepository(db))
