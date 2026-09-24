@@ -133,7 +133,7 @@ class ResponderService:
         if profile is None:
             raise ResponderProfileNotFound()
 
-        emergency = self.repository.get_emergency(request.emergency_id)
+        emergency = self.repository.get_emergency_for_update(request.emergency_id)
         if emergency is None:
             raise EmergencyNotFound()
 
