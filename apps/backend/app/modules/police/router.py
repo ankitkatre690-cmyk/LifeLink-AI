@@ -16,6 +16,7 @@ from app.modules.dispatch.repository import DispatchRepository
 from app.modules.dispatch.schemas import DispatchCreate, DispatchResponse
 from app.modules.dispatch.service import DispatchService
 from app.modules.police.exceptions import PoliceCaseExists, PoliceCaseNotFound
+from app.modules.emergency.exceptions import EmergencyNotFound
 from app.modules.police.repository import PoliceRepository
 from app.modules.police.schemas import (
     PoliceActiveEmergencyResponse,
@@ -57,6 +58,8 @@ def create_case(
         )
     except PoliceCaseExists:
         raise HTTPException(409, "A police case already exists for this emergency.")
+    except EmergencyNotFound:
+        raise HTTPException(404, "Emergency not found.")
 
 
 @router.get("/cases/{case_id}", response_model=PoliceCaseResponse)
@@ -84,6 +87,8 @@ def update_case(
         return PoliceService(PoliceRepository(db)).update_case(case_id, request)
     except PoliceCaseNotFound:
         raise HTTPException(404, "Police case not found.")
+    except EmergencyNotFound:
+        raise HTTPException(404, "Emergency not found.")
 
 
 @router.post("/dispatch", response_model=DispatchResponse)
