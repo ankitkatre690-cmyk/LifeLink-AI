@@ -45,8 +45,16 @@ class PoliceService:
             raise PoliceCaseNotFound()
         return case
 
-    def update_case(self, case_id, request: PoliceCaseUpdate):
+    def get_case_for_user(self, case_id, user_id, role):
         case = self.get_case(case_id)
+        if not self.repository.user_can_access_case(case_id, user_id, role):
+            raise PermissionError("You are not authorized to access this police case.")
+        return case
+
+    def update_case(self, case_id, request: PoliceCaseUpdate, user_id=None, role=None):
+        case = self.get_case(case_id)
+        if not self.repository.user_can_access_case(case_id, user_id, role):
+            raise PermissionError("You are not authorized to modify this police case.")
         emergency = self.repository.get_emergency(case.emergency_id)
         if emergency is None:
             raise EmergencyNotFound()
