@@ -258,6 +258,8 @@ class ResponderService:
                             resource.available_count + 1,
                         )
                         resource.is_available = resource.available_count > 0
+
+                if dispatch is not None and dispatch.dispatch_status == "Assigned":
                     dispatch.dispatch_status = status
 
         self.repository.update_profile()
