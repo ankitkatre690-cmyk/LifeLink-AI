@@ -146,3 +146,46 @@ def test_dispatch_object_access_rejects_unrelated_role():
             uuid.uuid4(),
             "Citizen",
         )
+
+
+def test_police_case_access_allows_owner_and_admin():
+    import uuid
+    from app.modules.police.service import PoliceService
+
+    case = type("Case", (), {"id": uuid.uuid4()})()
+
+    class Repository:
+        def get_case(self, case_id):
+            return case
+
+        def user_can_access_case(self, case_id, user_id, role):
+            return role in {"Police", "Admin"}
+
+    service = PoliceService(Repository())
+
+    assert service.get_case_for_user(
+        case.id, uuid.uuid4(), "Police"
+    ) is case
+    assert service.get_case_for_user(
+        case.id, uuid.uuid4(), "Admin"
+    ) is case
+
+
+def test_police_case_access_rejects_unrelated_user():
+    import uuid
+    import pytest
+    from app.modules.police.service import PoliceService
+
+    case = type("Case", (), {"id": uuid.uuid4()})()
+
+    class Repository:
+        def get_case(self, case_id):
+            return case
+
+        def user_can_access_case(self, case_id, user_id, role):
+            return False
+
+    with pytest.raises(PermissionError, match="not authorized"):
+        PoliceService(Repository()).get_case_for_user(
+            case.id, uuid.uuid4(), "Police"
+        )
