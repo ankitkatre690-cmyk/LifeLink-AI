@@ -169,6 +169,22 @@ async def update_status(
 def get_timeline(
     emergency_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     service = EmergencyService(EmergencyRepository(db))
-    return service.get_timeline(emergency_id)
+    try:
+        emergency = service.get_emergency(emergency_id)
+        if (
+            emergency.citizen_id != current_user.id
+            and (
+                current_user.role is None
+                or current_user.role.name not in {"Police", "Admin", "Responder"}
+            )
+        ):
+            raise HTTPException(
+                403,
+                "You are not authorized to view this emergency timeline.",
+            )
+        return service.get_timeline(emergency_id)
+    except EmergencyNotFound:
+        raise HTTPException(404, "Emergency not found.")
