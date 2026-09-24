@@ -97,6 +97,31 @@ class DispatchRepository:
     def get_dispatch(self, dispatch_id: uuid.UUID):
         return self.db.query(Dispatch).filter(Dispatch.id == dispatch_id).first()
 
+    def user_can_view_dispatch(
+        self,
+        dispatch_id: uuid.UUID,
+        user_id: uuid.UUID,
+        role: str | None,
+    ):
+        if role in {"Police", "Admin"}:
+            return True
+
+        query = (
+            self.db.query(Dispatch.id)
+            .outerjoin(EmergencyAssignment, Dispatch.assignment_id == EmergencyAssignment.id)
+            .outerjoin(ResponderProfile, EmergencyAssignment.responder_id == ResponderProfile.id)
+            .outerjoin(Hospital, Dispatch.hospital_id == Hospital.id)
+            .filter(Dispatch.id == dispatch_id)
+        )
+
+        if role == "Responder":
+            return query.filter(ResponderProfile.user_id == user_id).first() is not None
+
+        if role == "Hospital":
+            return query.filter(Hospital.user_id == user_id).first() is not None
+
+        return False
+
     def get_logs(self, dispatch_id: uuid.UUID):
         return (
             self.db.query(DispatchLog)
