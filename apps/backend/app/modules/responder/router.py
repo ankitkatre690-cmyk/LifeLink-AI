@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database.models.user import User
 from app.database.session import get_db
 from app.modules.auth.dependencies import get_current_user
+from app.modules.family.repository import FamilyRepository
 from app.modules.responder.exceptions import (
     AssignmentAlreadyExists,
     EmergencyAssignmentNotFound,
@@ -195,16 +196,33 @@ async def update_assignment(
             request.status,
             request.notes,
         )
+        emergency_status_by_assignment = {
+            "Accepted": "Accepted",
+            "EnRoute": "EnRoute",
+            "OnScene": "OnScene",
+            "Completed": "Completed",
+        }
+        emergency_status = emergency_status_by_assignment.get(assignment.status)
+        if emergency_status is not None:
+            assignment.emergency.status = emergency_status
+            db.commit()
+
+        event = build_event("responder.assignment_status_changed", {
+            "assignment_id": str(assignment.id),
+            "emergency_id": str(assignment.emergency_id),
+            "responder_id": str(assignment.responder_id),
+            "status": assignment.status,
+            "emergency_status": assignment.emergency.status,
+            "notes": assignment.notes,
+        })
         await connection_manager.send_to_user(
             assignment.emergency.citizen_id,
-            build_event("responder.assignment_status_changed", {
-                "assignment_id": str(assignment.id),
-                "emergency_id": str(assignment.emergency_id),
-                "responder_id": str(assignment.responder_id),
-                "status": assignment.status,
-                "notes": assignment.notes,
-            }),
+            event,
         )
+        for user_id in FamilyRepository(db).get_member_user_ids_for_creator(
+            assignment.emergency.citizen_id
+        ):
+            await connection_manager.send_to_user(user_id, event)
         return assignment
     except InvalidResponderRole:
         raise HTTPException(403, "Current user does not have Responder role.")
