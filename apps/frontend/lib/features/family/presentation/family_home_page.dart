@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/realtime/realtime_client.dart';
+import '../../../core/storage/secure_storage.dart';
 import '../data/family_api.dart';
 
 final familyApiProvider = Provider<FamilyApi>(
@@ -22,11 +26,18 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
   String? _error;
   Map<String, dynamic>? _family;
   List<Map<String, dynamic>> _members = [];
+  RealtimeClient? _realtime;
+  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  final List<String> _emergencyUpdates = <String>[];
+  bool _realtimeConnected = false;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(_loadFamily);
+    Future.microtask(() async {
+      await _loadFamily();
+      await _connectRealtime();
+    });
   }
 
   Future<void> _loadFamily() async {
@@ -50,6 +61,33 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _connectRealtime() async {
+    final token = await const SecureStorage().readAccessToken();
+    if (!mounted || token == null || token.isEmpty) return;
+
+    final client = RealtimeClient(
+      baseUrl: ref.read(apiClientProvider).dio.options.baseUrl,
+      accessToken: token,
+    );
+    _realtime = client;
+    client.connect();
+    _realtimeSubscription = client.events.listen((event) {
+      if (!mounted) return;
+      final type = event['event']?.toString() ?? '';
+      final data = event['data'];
+      if (data is! Map) return;
+      if (type != 'emergency.created' && type != 'emergency.status_changed') return;
+
+      final status = data['status']?.toString() ?? 'Updated';
+      final emergencyId = data['emergency_id']?.toString() ?? 'Unknown';
+      setState(() {
+        _realtimeConnected = true;
+        _emergencyUpdates.insert(0, 'Emergency $emergencyId: $status');
+        if (_emergencyUpdates.length > 5) _emergencyUpdates.removeLast();
+      });
+    });
   }
 
   Future<void> _createFamily() async {
@@ -145,6 +183,13 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
   }
 
   @override
+  void dispose() {
+    _realtimeSubscription?.cancel();
+    _realtime?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     return Scaffold(
@@ -177,6 +222,32 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
                 leading: const Icon(Icons.error_outline),
                 title: Text(_error!),
               )),
+            Card(
+              child: ListTile(
+                leading: Icon(_realtimeConnected ? Icons.wifi : Icons.wifi_off),
+                title: Text(_realtimeConnected
+                    ? 'Live emergency alerts'
+                    : 'Emergency alert channel'),
+                subtitle: Text(_realtimeConnected
+                    ? 'Connected to family emergency updates.'
+                    : 'Connecting to live family updates...'),
+              ),
+            ),
+            if (_emergencyUpdates.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Recent emergency alerts',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              ..._emergencyUpdates.map(
+                (update) => Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.warning_amber_outlined),
+                    title: Text(update),
+                  ),
+                ),
+              ),
+            ],
             if (_loading)
               const Padding(
                 padding: EdgeInsets.all(32),
