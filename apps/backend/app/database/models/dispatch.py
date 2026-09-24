@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String, Float
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -10,6 +10,12 @@ from app.database.mixins import UUIDMixin, TimestampMixin
 
 class Dispatch(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "dispatches"
+    __table_args__ = (
+        CheckConstraint(
+            "dispatch_status IN ('Assigned', 'Accepted', 'EnRoute', 'OnScene', 'Completed', 'Cancelled')",
+            name="ck_dispatches_dispatch_status_valid",
+        ),
+    )
 
     emergency_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
