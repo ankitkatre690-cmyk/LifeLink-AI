@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.database.models.device_token import DeviceToken
 from app.database.models.notification import Notification
 
 
@@ -34,6 +35,28 @@ class NotificationRepository:
                 Notification.recipient_id == recipient_id,
             )
             .first()
+        )
+
+    def list_active_device_tokens(self, user_id: uuid.UUID) -> list[DeviceToken]:
+        return (
+            self.db.query(DeviceToken)
+            .filter(
+                DeviceToken.user_id == user_id,
+                DeviceToken.is_active.is_(True),
+            )
+            .all()
+        )
+
+    def deactivate_device_tokens(self, tokens: list[str]) -> None:
+        if not tokens:
+            return
+        (
+            self.db.query(DeviceToken)
+            .filter(DeviceToken.token.in_(tokens))
+            .update(
+                {DeviceToken.is_active: False},
+                synchronize_session=False,
+            )
         )
 
     def commit(self):
