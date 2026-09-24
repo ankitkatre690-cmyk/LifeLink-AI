@@ -1,8 +1,6 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.realtime.events import build_event
-from app.realtime.manager import connection_manager
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
@@ -182,30 +180,19 @@ def get_assignment(
     "/assignments/{assignment_id}",
     response_model=AssignmentResponse,
 )
-async def update_assignment(
+def update_assignment(
     assignment_id: UUID,
     request: AssignmentStatusUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
-        assignment = _service(db).update_assignment(
+        return _service(db).update_assignment(
             current_user,
             assignment_id,
             request.status,
             request.notes,
         )
-        await connection_manager.send_to_user(
-            assignment.emergency.citizen_id,
-            build_event("responder.assignment_status_changed", {
-                "assignment_id": str(assignment.id),
-                "emergency_id": str(assignment.emergency_id),
-                "responder_id": str(assignment.responder_id),
-                "status": assignment.status,
-                "notes": assignment.notes,
-            }),
-        )
-        return assignment
     except InvalidResponderRole:
         raise HTTPException(403, "Current user does not have Responder role.")
     except EmergencyAssignmentNotFound:
