@@ -22,7 +22,7 @@ Override the API base URL through the application's configuration layer before p
 
 ## Current phase
 
-The frontend foundation now includes authentication, role-aware routing, a Citizen dashboard, and permission-aware device location for emergency SOS. Firebase Messaging and WebSockets remain separate increments.
+The frontend foundation now includes authentication, role-aware routing, Citizen emergency SOS with device location, authenticated WebSockets, and Firebase Messaging token registration.
 
 ### Location platform configuration
 
@@ -41,6 +41,14 @@ For iOS, add the location usage description to `Info.plist`:
 ```
 
 Do not request background location for the current SOS flow. Background tracking will be designed separately if required.
+
+### Firebase Cloud Messaging
+
+The app registers the authenticated device's FCM token with the existing backend endpoint `/api/v1/notifications/device-tokens`. Token refresh is registered automatically, and the token is deactivated during logout when a registration ID is available.
+
+Before mobile push can run, configure Firebase for the target platform using the official Firebase Flutter setup. The generated Firebase configuration files are intentionally not committed by this foundation increment. Do not commit Firebase service-account credentials or other private keys.
+
+FCM initialization is isolated from authentication: missing Firebase configuration does not block login.
 
 ## Local setup
 
