@@ -90,6 +90,8 @@ def update_case(
         raise HTTPException(404, "Police case not found.")
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
 
 
 @router.post("/dispatch", response_model=DispatchResponse)
