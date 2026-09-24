@@ -522,3 +522,63 @@ def test_terminal_assignment_does_not_release_already_closed_dispatch():
 
     assert resource.available_count == 1
     assert repository.dispatch.dispatch_status == "Cancelled"
+
+
+class FakeEmergencyAccessRepository:
+    def __init__(self, emergency, allowed):
+        self.emergency = emergency
+        self.allowed = allowed
+
+    def get_by_id(self, emergency_id):
+        return self.emergency
+
+    def user_can_view_emergency(self, emergency_id, user_id, role):
+        return self.allowed
+
+
+@pytest.mark.parametrize(
+    ("role", "allowed"),
+    [
+        ("Citizen", True),
+        ("Citizen", False),
+        ("Responder", True),
+        ("Responder", False),
+        ("Police", True),
+        ("Admin", True),
+    ],
+)
+def test_emergency_object_access_is_enforced(role, allowed):
+    emergency = FakeEmergency("Pending")
+    repository = FakeEmergencyAccessRepository(emergency, allowed)
+    service = EmergencyService(repository)
+
+    if allowed:
+        assert service.get_emergency_for_user(
+            emergency.id,
+            uuid.uuid4(),
+            role,
+        ) is emergency
+    else:
+        with pytest.raises(PermissionError, match="not authorized"):
+            service.get_emergency_for_user(
+                emergency.id,
+                uuid.uuid4(),
+                role,
+            )
+
+
+def test_emergency_object_access_raises_not_found_before_authorization():
+    class MissingRepository(FakeEmergencyAccessRepository):
+        def get_by_id(self, emergency_id):
+            return None
+
+    repository = MissingRepository(None, False)
+
+    with pytest.raises(Exception) as exc_info:
+        EmergencyService(repository).get_emergency_for_user(
+            uuid.uuid4(),
+            uuid.uuid4(),
+            "Citizen",
+        )
+
+    assert exc_info.type.__name__ == "EmergencyNotFound"
