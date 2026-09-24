@@ -58,23 +58,35 @@ async def create_dispatch(
 def get_dispatch(
     dispatch_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("Police", "Admin")),
+    current_user: User = Depends(get_current_user),
 ):
-    _ensure_dispatch_role(current_user)
     try:
-        return _service(db).get_dispatch(dispatch_id)
+        role = current_user.role.name if current_user.role else None
+        return _service(db).get_dispatch_for_user(
+            dispatch_id,
+            current_user.id,
+            role,
+        )
     except DispatchNotFound:
         raise HTTPException(404, "Dispatch not found.")
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc))
 
 
 @router.get("/{dispatch_id}/logs", response_model=list[DispatchLogResponse])
 def get_dispatch_logs(
     dispatch_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("Police", "Admin")),
+    current_user: User = Depends(get_current_user),
 ):
-    _ensure_dispatch_role(current_user)
     try:
-        return _service(db).get_logs(dispatch_id)
+        role = current_user.role.name if current_user.role else None
+        return _service(db).get_logs_for_user(
+            dispatch_id,
+            current_user.id,
+            role,
+        )
     except DispatchNotFound:
         raise HTTPException(404, "Dispatch not found.")
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc))
