@@ -51,7 +51,15 @@ class HospitalService:
             raise HospitalProfileNotFound()
         if request.available_count > request.total_count:
             raise InvalidResourceCount()
-        resource = HospitalResource(hospital_id=hospital.id, resource_type=request.resource_type, total_count=request.total_count, available_count=request.available_count, is_available=request.available_count > 0)
+        if request.total_count < 0 or request.available_count < 0:
+            raise InvalidResourceCount()
+        resource = HospitalResource(
+            hospital_id=hospital.id,
+            resource_type=request.resource_type,
+            total_count=request.total_count,
+            available_count=request.available_count,
+            is_available=request.available_count > 0,
+        )
         return self.repository.create_resource(resource)
 
     def list_resources(self, hospital_id: UUID):
@@ -74,6 +82,7 @@ class HospitalService:
             raise InvalidResourceCount()
         resource.total_count = request.total_count
         resource.available_count = request.available_count
-        resource.is_available = request.is_available and request.available_count > 0
+        # Availability is derived from inventory; the client cannot override it.
+        resource.is_available = request.available_count > 0
         self.repository.commit()
         return resource
