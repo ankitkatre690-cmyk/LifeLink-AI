@@ -91,3 +91,7 @@ The Hospital dashboard uses the existing hospital profile and resource APIs. It 
 ### Police dashboard
 
 The Police dashboard uses the existing police workflow: active emergency queue, police case creation, case status updates, and dispatch requests. It does not create a separate emergency or dispatch domain.
+
+### Citizen emergency flow
+
+Citizen SOS now requests device location through the existing `LocationService`, asks for explicit confirmation, creates a `GeneralSOS` through the existing emergency API, and opens the emergency tracking screen. The tracking screen listens to the existing authenticated realtime channel and does not create a second emergency state system.
