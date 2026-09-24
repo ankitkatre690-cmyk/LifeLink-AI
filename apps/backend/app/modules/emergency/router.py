@@ -1,6 +1,8 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.realtime.events import build_event
+from app.realtime.manager import connection_manager
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
@@ -32,7 +34,7 @@ router = APIRouter(
     response_model=EmergencyResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_emergency(
+async def create_emergency(
     request: EmergencyCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
