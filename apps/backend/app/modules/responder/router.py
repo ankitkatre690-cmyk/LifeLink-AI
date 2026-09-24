@@ -116,7 +116,7 @@ def update_my_status(
     except ResponderProfileNotFound:
         raise HTTPException(404, "Responder profile not found.")
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(409, str(exc))
 
 
 @router.patch(
@@ -160,6 +160,8 @@ def create_assignment(
         raise HTTPException(404, "Emergency not found.")
     except AssignmentAlreadyExists:
         raise HTTPException(409, "Assignment already exists.")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
 
 
 @router.get(
