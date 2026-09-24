@@ -22,6 +22,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   String? _error;
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _assignment;
+  String? _assignmentId;
 
   @override
   void initState() {
@@ -70,7 +71,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   }
 
   Future<void> _loadAssignment() async {
-    final id = _assignment?['id']?.toString();
+    final id = _assignmentId ?? _assignment?['id']?.toString();
     if (id == null || id.isEmpty) return;
     try {
       _assignment = await ref.read(responderApiProvider).getAssignment(id);
@@ -107,6 +108,31 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
           ? error.response?.data['detail']?.toString()
           : 'Unable to update assignment.');
     }
+  }
+
+  void _setAssignmentId() {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Load assignment'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Assignment UUID'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              _assignmentId = controller.text.trim();
+              Navigator.pop(context);
+              _loadAssignment();
+            },
+            child: const Text('Load'),
+          ),
+        ],
+      ),
+    ).whenComplete(controller.dispose);
   }
 
   @override
@@ -158,7 +184,13 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
                 subtitle: Text('Location: ${_profile!['latitude'] ?? '-'}, ${_profile!['longitude'] ?? '-'}'),
               )),
               const SizedBox(height: 12),
-              const Text('Assignment', style: TextStyle(fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Assignment', style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextButton.icon(onPressed: _setAssignmentId, icon: const Icon(Icons.search), label: const Text('Load')),
+                ],
+              ),
               if (_assignment == null)
                 const Card(child: ListTile(
                   title: Text('No assignment loaded'),
