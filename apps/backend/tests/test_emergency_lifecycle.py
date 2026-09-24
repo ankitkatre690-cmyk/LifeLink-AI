@@ -399,3 +399,22 @@ def test_responder_can_remain_busy_with_active_assignment():
     profile = ResponderService(repository).update_status(FakeUser(), "Busy")
 
     assert profile.status == "Busy"
+
+
+def test_assignment_update_rejects_out_of_sync_terminal_emergency():
+    resource = FakeResource(available_count=0, total_count=1)
+    repository = FakeCompletionRepository(resource, emergency_status="Cancelled")
+    previous_status = repository.assignment.status
+
+    with pytest.raises(ValueError, match="out of sync"):
+        ResponderService(repository).update_assignment(
+            FakeUser(),
+            repository.assignment.id,
+            "Completed",
+            None,
+        )
+
+    assert repository.assignment.status == previous_status
+    assert repository.emergency.status == "Cancelled"
+    assert repository.profile.status == "Busy"
+    assert resource.available_count == 0
