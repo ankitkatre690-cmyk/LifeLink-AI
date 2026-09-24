@@ -237,3 +237,77 @@ def test_dispatch_repository_guard_is_checked_before_responder_selection():
 
     with pytest.raises(DispatchAlreadyExists):
         DispatchService(repository).dispatch_emergency(emergency.id)
+
+
+class FailingDispatchRepository:
+    def __init__(self):
+        self.emergency = type(
+            "Emergency",
+            (),
+            {
+                "id": uuid.uuid4(),
+                "status": "Pending",
+                "latitude": 21.0,
+                "longitude": 79.0,
+            },
+        )()
+        self.responder = type(
+            "Responder",
+            (),
+            {
+                "id": uuid.uuid4(),
+                "status": "Available",
+                "latitude": 21.1,
+                "longitude": 79.1,
+            },
+        )()
+        self.resource = type(
+            "Resource",
+            (),
+            {"id": uuid.uuid4(), "available_count": 1, "is_available": True},
+        )()
+        self.hospital = type("Hospital", (), {"id": uuid.uuid4()})()
+        self.rollback_called = False
+
+    def get_emergency(self, emergency_id):
+        return self.emergency
+
+    def get_dispatch_for_emergency(self, emergency_id):
+        return None
+
+    def get_active_assignment_for_emergency(self, emergency_id):
+        return None
+
+    def get_available_responders(self):
+        return [self.responder]
+
+    def get_available_hospital_resource(self):
+        return self.resource, self.hospital
+
+    def create_assignment(self, assignment):
+        assignment.id = uuid.uuid4()
+        return assignment
+
+    def create_dispatch(self, dispatch):
+        raise RuntimeError("dispatch persistence failed")
+
+    def create_log(self, log):
+        return log
+
+    def commit(self):
+        raise AssertionError("commit must not be reached")
+
+    def rollback(self):
+        self.rollback_called = True
+
+    def refresh(self, entity):
+        return None
+
+
+def test_dispatch_rolls_back_when_late_persistence_fails():
+    repository = FailingDispatchRepository()
+
+    with pytest.raises(RuntimeError, match="dispatch persistence failed"):
+        DispatchService(repository).dispatch_emergency(repository.emergency.id)
+
+    assert repository.rollback_called is True
