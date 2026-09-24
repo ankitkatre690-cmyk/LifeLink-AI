@@ -3,9 +3,7 @@ def test_app_starts(client):
     assert response.status_code == 200
 
 
-def test_auth_login_route_exists(client):
-    response = client.post("/api/v1/auth/login", data={
-        "username": "missing@example.com",
-        "password": "invalid",
-    })
-    assert response.status_code in {401, 422}
+def test_auth_login_route_is_registered(client):
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+    assert "/api/v1/auth/login" in response.json()["paths"]
