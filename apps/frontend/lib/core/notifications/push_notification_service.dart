@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io' show Platform;
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -33,7 +31,9 @@ class PushNotificationService {
   Future<void> initialize() async {
     if (_initialized || kIsWeb) return;
 
-    await Firebase.initializeApp();
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
     _messaging = FirebaseMessaging.instance;
 
     await _messaging!.requestPermission(
@@ -94,9 +94,14 @@ class PushNotificationService {
 
   String _platformName() {
     if (kIsWeb) return 'web';
-    if (Platform.isAndroid) return 'android';
-    if (Platform.isIOS) return 'ios';
-    return 'other';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      default:
+        return 'other';
+    }
   }
 }
 
