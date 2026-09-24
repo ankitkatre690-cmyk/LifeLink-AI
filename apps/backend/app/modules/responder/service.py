@@ -34,6 +34,14 @@ ALLOWED_ASSIGNMENT_TRANSITIONS = {
     "Cancelled": set(),
 }
 
+EMERGENCY_STATUS_BY_ASSIGNMENT = {
+    "Accepted": "Accepted",
+    "EnRoute": "EnRoute",
+    "OnScene": "OnScene",
+    "Completed": "Completed",
+    "Cancelled": "Cancelled",
+}
+
 
 class ResponderService:
     def __init__(self, repository: ResponderRepository):
@@ -189,6 +197,13 @@ class ResponderService:
         assignment.status = status
         if notes is not None:
             assignment.notes = notes
+
+        emergency_status = EMERGENCY_STATUS_BY_ASSIGNMENT.get(status)
+        if emergency_status is not None:
+            emergency = self.repository.get_emergency(assignment.emergency_id)
+            if emergency is None:
+                raise EmergencyNotFound()
+            emergency.status = emergency_status
 
         if status in {"Completed", "Cancelled"}:
             profile.status = "Available"
