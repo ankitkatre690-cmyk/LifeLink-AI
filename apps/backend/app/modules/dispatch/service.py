@@ -18,7 +18,7 @@ class DispatchService:
         self.repository = repository
 
     def dispatch_emergency(self, emergency_id: uuid.UUID):
-        emergency = self.repository.get_emergency(emergency_id)
+        emergency = self.repository.get_emergency_for_update(emergency_id)
         if emergency is None:
             raise EmergencyNotFound()
 
