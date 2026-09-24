@@ -1,13 +1,13 @@
 """align users table with current User model
 
 Revision ID: 9e5f8a2b3c47
-Revises: 8d4e7f1a2b36
+Revises: 7c3d9e1a2b45
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "9e5f8a2b3c47"
-down_revision = "8d4e7f1a2b36"
+down_revision = "7c3d9e1a2b45"
 branch_labels = None
 depends_on = None
 
