@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 from app.modules.hospital.exceptions import HospitalProfileAlreadyExists, HospitalProfileNotFound, HospitalResourceNotFound, InvalidHospitalRole, InvalidResourceCount
 from app.modules.hospital.repository import HospitalRepository
 from app.modules.hospital.schemas import HospitalCreate, HospitalResponse, ResourceCreate, ResourceResponse, ResourceUpdate
@@ -19,7 +19,7 @@ def _service(db: Session) -> HospitalService:
 
 
 @router.post("", response_model=HospitalResponse, status_code=status.HTTP_201_CREATED)
-def create_hospital_profile(request: HospitalCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_hospital_profile(request: HospitalCreate, db: Session = Depends(get_db), current_user: User = Depends(require_roles("Hospital"))):
     try:
         return _service(db).create_profile(current_user, request)
     except InvalidHospitalRole:
@@ -29,7 +29,7 @@ def create_hospital_profile(request: HospitalCreate, db: Session = Depends(get_d
 
 
 @router.get("/me", response_model=HospitalResponse)
-def get_my_hospital_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_my_hospital_profile(db: Session = Depends(get_db), current_user: User = Depends(require_roles("Hospital"))):
     try:
         return _service(db).get_my_profile(current_user)
     except InvalidHospitalRole:
@@ -44,7 +44,7 @@ def list_hospitals(db: Session = Depends(get_db), current_user: User = Depends(g
 
 
 @router.post("/resources", response_model=ResourceResponse, status_code=status.HTTP_201_CREATED)
-def add_resource(request: ResourceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def add_resource(request: ResourceCreate, db: Session = Depends(get_db), current_user: User = Depends(require_roles("Hospital"))):
     try:
         return _service(db).add_resource(current_user, request)
     except InvalidHospitalRole:
@@ -72,7 +72,7 @@ def list_resources(hospital_id: UUID, db: Session = Depends(get_db), current_use
 
 
 @router.patch("/resources/{resource_id}", response_model=ResourceResponse)
-def update_resource(resource_id: UUID, request: ResourceUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def update_resource(resource_id: UUID, request: ResourceUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_roles("Hospital"))):
     try:
         return _service(db).update_resource(current_user, resource_id, request)
     except InvalidHospitalRole:
