@@ -30,6 +30,12 @@ class Dispatch(UUIDMixin, TimestampMixin, Base):
         nullable=True,
         index=True,
     )
+    resource_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("hospital_resources.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     distance_km: Mapped[float] = mapped_column(Float, nullable=False)
     eta_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
     dispatch_status: Mapped[str] = mapped_column(
@@ -41,6 +47,7 @@ class Dispatch(UUIDMixin, TimestampMixin, Base):
     emergency = relationship("Emergency", back_populates="dispatches")
     assignment = relationship("EmergencyAssignment", back_populates="dispatch")
     hospital = relationship("Hospital", back_populates="dispatches")
+    resource = relationship("HospitalResource")
     logs = relationship(
         "DispatchLog",
         back_populates="dispatch",
