@@ -25,6 +25,15 @@ ALLOWED_ASSIGNMENT_STATUSES = {
     "Cancelled",
 }
 
+ALLOWED_ASSIGNMENT_TRANSITIONS = {
+    "Assigned": {"Accepted", "Cancelled"},
+    "Accepted": {"EnRoute", "Cancelled"},
+    "EnRoute": {"OnScene", "Cancelled"},
+    "OnScene": {"Completed", "Cancelled"},
+    "Completed": set(),
+    "Cancelled": set(),
+}
+
 
 class ResponderService:
     def __init__(self, repository: ResponderRepository):
@@ -162,6 +171,14 @@ class ResponderService:
             raise EmergencyAssignmentNotFound()
 
         previous_status = assignment.status
+        if status != previous_status and status not in ALLOWED_ASSIGNMENT_TRANSITIONS.get(
+            previous_status, set()
+        ):
+            raise ValueError(
+                f"Invalid responder assignment status transition: "
+                f"{previous_status} -> {status}"
+            )
+
         assignment.status = status
         if notes is not None:
             assignment.notes = notes
