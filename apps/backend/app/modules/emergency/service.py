@@ -10,6 +10,17 @@ from app.modules.emergency.schemas import (
 )
 
 
+ALLOWED_STATUS_TRANSITIONS = {
+    "Pending": {"Accepted", "Assigned", "Cancelled"},
+    "Accepted": {"Assigned", "Cancelled"},
+    "Assigned": {"EnRoute", "Cancelled"},
+    "EnRoute": {"OnScene", "Cancelled"},
+    "OnScene": {"Completed", "Cancelled"},
+    "Completed": set(),
+    "Cancelled": set(),
+}
+
+
 class EmergencyService:
 
     def __init__(self, repository: EmergencyRepository):
@@ -79,6 +90,14 @@ class EmergencyService:
 
         if emergency is None:
             raise EmergencyNotFound()
+
+        current_status = emergency.status
+        if request.status != current_status and request.status not in ALLOWED_STATUS_TRANSITIONS.get(
+            current_status, set()
+        ):
+            raise ValueError(
+                f"Invalid emergency status transition: {current_status} -> {request.status}"
+            )
 
         emergency.status = request.status
 
