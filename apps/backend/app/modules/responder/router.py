@@ -196,18 +196,6 @@ async def update_assignment(
             request.status,
             request.notes,
         )
-        emergency_status_by_assignment = {
-            "Accepted": "Accepted",
-            "EnRoute": "EnRoute",
-            "OnScene": "OnScene",
-            "Completed": "Completed",
-            "Cancelled": "Cancelled",
-        }
-        emergency_status = emergency_status_by_assignment.get(assignment.status)
-        if emergency_status is not None:
-            assignment.emergency.status = emergency_status
-            db.commit()
-
         event = build_event("responder.assignment_status_changed", {
             "assignment_id": str(assignment.id),
             "emergency_id": str(assignment.emergency_id),
