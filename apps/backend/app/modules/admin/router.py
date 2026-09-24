@@ -13,7 +13,7 @@ from app.modules.admin.schemas import (
     AdminUserStatusUpdate,
 )
 from app.modules.admin.service import AdminService
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -31,7 +31,7 @@ def _ensure_admin(user: User):
 @router.get("/dashboard", response_model=AdminDashboardResponse)
 def dashboard(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Admin")),
 ):
     _ensure_admin(current_user)
     return _service(db).dashboard()
@@ -42,7 +42,7 @@ def list_users(
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Admin")),
 ):
     _ensure_admin(current_user)
     return _service(db).list_users(limit, offset)
@@ -53,7 +53,7 @@ def update_user_status(
     user_id: UUID,
     request: AdminUserStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Admin")),
 ):
     _ensure_admin(current_user)
 
