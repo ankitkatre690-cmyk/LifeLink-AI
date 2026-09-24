@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.emergency import Emergency
 from app.database.models.emergency_update import EmergencyUpdate
+from app.database.models.emergency_assignment import EmergencyAssignment
 
 
 class EmergencyRepository:
@@ -38,6 +39,18 @@ class EmergencyRepository:
             .filter(Emergency.citizen_id == user_id)
             .order_by(Emergency.created_at.desc())
             .all()
+        )
+
+    def get_active_assignment_for_emergency(self, emergency_id: UUID):
+        return (
+            self.db.query(EmergencyAssignment)
+            .filter(
+                EmergencyAssignment.emergency_id == emergency_id,
+                EmergencyAssignment.status.in_(
+                    {"Assigned", "Accepted", "EnRoute", "OnScene"}
+                ),
+            )
+            .first()
         )
 
     def update(self):
