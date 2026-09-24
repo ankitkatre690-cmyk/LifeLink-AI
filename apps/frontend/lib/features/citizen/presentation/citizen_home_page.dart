@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
+import 'emergency_sos_page.dart';
 
 class CitizenHomePage extends ConsumerWidget {
   const CitizenHomePage({super.key});
@@ -35,15 +36,23 @@ class CitizenHomePage extends ConsumerWidget {
                 children: [
                   const Icon(Icons.emergency_share_outlined, size: 52),
                   const SizedBox(height: 12),
-                  Text('Emergency Assistance',
-                      style: Theme.of(context).textTheme.titleLarge,
-                      textAlign: TextAlign.center),
+                  Text(
+                    'Emergency Assistance',
+                    style: Theme.of(context).textTheme.titleLarge,
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Emergency controls will connect to the existing backend emergency workflow.',
-                      textAlign: TextAlign.center),
+                  const Text(
+                    'Send an SOS with your current location through the existing emergency workflow.',
+                    textAlign: TextAlign.center,
+                  ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
-                    onPressed: () => _showEmergencyInfo(context),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const EmergencySosPage(),
+                      ),
+                    ),
                     icon: const Icon(Icons.sos),
                     label: const Text('Emergency SOS'),
                   ),
@@ -52,28 +61,21 @@ class CitizenHomePage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
-          const Card(child: ListTile(
-            leading: Icon(Icons.family_restroom_outlined),
-            title: Text('Family Safety'),
-            subtitle: Text('Family alerts and emergency updates will appear here.'),
-          )),
-          const Card(child: ListTile(
-            leading: Icon(Icons.notifications_active_outlined),
-            title: Text('Notifications'),
-            subtitle: Text('Emergency and response notifications will appear here.'),
-          )),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.family_restroom_outlined),
+              title: Text('Family Safety'),
+              subtitle: Text('Family alerts and emergency updates will appear here.'),
+            ),
+          ),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.notifications_active_outlined),
+              title: Text('Notifications'),
+              subtitle: Text('Emergency and response notifications will appear here.'),
+            ),
+          ),
         ],
-      ),
-    );
-  }
-
-  void _showEmergencyInfo(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Emergency SOS'),
-        content: const Text('Live SOS submission will be connected to the existing emergency API in the next increment. No emergency is created by this button yet.'),
-        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Close'))],
       ),
     );
   }
