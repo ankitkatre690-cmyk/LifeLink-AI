@@ -36,3 +36,14 @@ def test_composed_routes_are_registered(client):
     ]
     for path in expected:
         assert path in paths, path
+
+
+def test_dispatch_tracks_reserved_resource_model():
+    from app.database.models.dispatch import Dispatch
+    assert "resource_id" in Dispatch.__table__.c
+
+
+def test_hospital_resource_has_capacity_fields():
+    from app.database.models.hospital_resource import HospitalResource
+    assert "available_count" in HospitalResource.__table__.c
+    assert "total_count" in HospitalResource.__table__.c
