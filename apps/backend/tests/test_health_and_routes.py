@@ -189,3 +189,70 @@ def test_police_case_access_rejects_unrelated_user():
         PoliceService(Repository()).get_case_for_user(
             case.id, uuid.uuid4(), "Police"
         )
+
+
+def test_dispatch_realtime_accepts_only_explicit_family_recipients():
+    import asyncio
+    import uuid
+    from app.modules.dispatch.realtime import publish_dispatch_events
+    import app.modules.dispatch.realtime as realtime
+
+    class Manager:
+        def __init__(self):
+            self.user_ids = []
+
+        async def send_to_user(self, user_id, message):
+            self.user_ids.append(user_id)
+
+    manager = Manager()
+    original = realtime.connection_manager
+    realtime.connection_manager = manager
+    try:
+        citizen_id = uuid.uuid4()
+        responder_user_id = uuid.uuid4()
+        hospital_user_id = uuid.uuid4()
+        family_user_id = uuid.uuid4()
+        dispatch = type(
+            "Dispatch",
+            (),
+            {
+                "id": uuid.uuid4(),
+                "emergency_id": uuid.uuid4(),
+                "hospital_id": uuid.uuid4(),
+                "distance_km": 1.0,
+                "eta_minutes": 2,
+                "dispatch_status": "Assigned",
+                "emergency": type("Emergency", (), {"citizen_id": citizen_id})(),
+                "assignment": type(
+                    "Assignment",
+                    (),
+                    {
+                        "responder_id": uuid.uuid4(),
+                        "responder": type(
+                            "Responder",
+                            (),
+                            {"user_id": responder_user_id},
+                        )(),
+                    },
+                )(),
+                "hospital": type(
+                    "Hospital",
+                    (),
+                    {"user_id": hospital_user_id},
+                )(),
+            },
+        )()
+
+        asyncio.run(
+            publish_dispatch_events(
+                dispatch,
+                [family_user_id],
+            )
+        )
+
+        assert citizen_id in manager.user_ids
+        assert responder_user_id in manager.user_ids
+        assert hospital_user_id in manager.user_ids
+        assert family_user_id in manager.user_ids
+    finally:
+        realtime.connection_manager = original
