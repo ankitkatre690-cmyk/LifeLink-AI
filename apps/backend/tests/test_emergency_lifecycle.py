@@ -379,11 +379,11 @@ def test_terminal_assignment_release_is_guarded_by_previous_status():
     service.update_assignment(
         FakeUser(),
         repository.assignment.id,
-        terminal_status,
+        "Completed",
         None,
     )
     assert resource.available_count == 1
-    assert repository.dispatch.dispatch_status == terminal_status
+    assert repository.dispatch.dispatch_status == "Completed"
 
 
 @pytest.mark.parametrize("status", ["Available", "Offline"])
