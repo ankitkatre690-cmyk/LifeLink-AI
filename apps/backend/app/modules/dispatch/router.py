@@ -1,8 +1,6 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.realtime.events import build_event
-from app.realtime.manager import connection_manager
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
@@ -18,6 +16,7 @@ from app.modules.dispatch.exceptions import (
 from app.modules.dispatch.repository import DispatchRepository
 from app.modules.dispatch.schemas import DispatchCreate, DispatchLogResponse, DispatchResponse
 from app.modules.dispatch.service import DispatchService
+from app.modules.dispatch.realtime import publish_dispatch_events
 
 
 router = APIRouter(prefix="/dispatch", tags=["Dispatch"])
@@ -41,39 +40,7 @@ async def create_dispatch(
     _ensure_dispatch_role(current_user)
     try:
         dispatch = _service(db).dispatch_emergency(request.emergency_id)
-        await connection_manager.send_to_user(
-            dispatch.emergency.citizen_id,
-            build_event("dispatch.assigned", {
-                "dispatch_id": str(dispatch.id),
-                "emergency_id": str(dispatch.emergency_id),
-                "responder_id": str(dispatch.assignment.responder_id),
-                "hospital_id": str(dispatch.hospital_id) if dispatch.hospital_id else None,
-                "distance_km": dispatch.distance_km,
-                "eta_minutes": dispatch.eta_minutes,
-                "status": dispatch.dispatch_status,
-            }),
-        )
-        await connection_manager.send_to_user(
-            dispatch.assignment.responder.user_id,
-            build_event("dispatch.assignment", {
-                "dispatch_id": str(dispatch.id),
-                "emergency_id": str(dispatch.emergency_id),
-                "assignment_id": str(dispatch.assignment_id),
-                "distance_km": dispatch.distance_km,
-                "eta_minutes": dispatch.eta_minutes,
-                "status": dispatch.dispatch_status,
-            }),
-        )
-        if dispatch.hospital is not None:
-            await connection_manager.send_to_user(
-                dispatch.hospital.user_id,
-                build_event("dispatch.hospital_incoming", {
-                    "dispatch_id": str(dispatch.id),
-                    "emergency_id": str(dispatch.emergency_id),
-                    "hospital_id": str(dispatch.hospital_id),
-                    "status": dispatch.dispatch_status,
-                }),
-            )
+        await publish_dispatch_events(dispatch)
         return dispatch
     except EmergencyNotFound:
         raise HTTPException(404, "Emergency not found.")
