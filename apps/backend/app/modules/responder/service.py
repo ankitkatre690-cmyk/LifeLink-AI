@@ -161,12 +161,34 @@ class ResponderService:
         if profile is None or assignment.responder_id != profile.id:
             raise EmergencyAssignmentNotFound()
 
+        previous_status = assignment.status
         assignment.status = status
         if notes is not None:
             assignment.notes = notes
 
         if status in {"Completed", "Cancelled"}:
             profile.status = "Available"
+
+            # A dispatch reserves one hospital resource. Release that
+            # reservation exactly once when the assignment reaches a
+            # terminal state.
+            if (
+                previous_status not in {"Completed", "Cancelled"}
+                and status in {"Completed", "Cancelled"}
+            ):
+                dispatch = self.repository.get_dispatch_by_assignment_id(
+                    assignment.id
+                )
+                if dispatch is not None and dispatch.resource_id is not None:
+                    resource = self.repository.get_hospital_resource(
+                        dispatch.resource_id
+                    )
+                    if resource is not None:
+                        resource.available_count = min(
+                            resource.total_count,
+                            resource.available_count + 1,
+                        )
+                        resource.is_available = resource.available_count > 0
 
         self.repository.update_profile()
         return assignment
