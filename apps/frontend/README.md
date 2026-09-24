@@ -50,6 +50,10 @@ Before mobile push can run, configure Firebase for the target platform using the
 
 FCM initialization is isolated from authentication: missing Firebase configuration does not block login.
 
+Foreground FCM messages are exposed through the notification service and displayed by the Citizen dashboard. When the app is backgrounded or terminated, Firebase Messaging handles notification delivery through the platform notification system after the Firebase platform configuration is installed.
+
+The Firebase background handler is registered at application startup and intentionally performs no emergency-domain work. Emergency state remains owned by the backend and realtime channels.
+
 ## Local setup
 
 From the repository root:
