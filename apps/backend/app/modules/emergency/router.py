@@ -75,7 +75,7 @@ def get_emergency(
     "/{emergency_id}",
     response_model=EmergencyResponse,
 )
-def update_status(
+async def update_status(
     emergency_id: UUID,
     request: EmergencyUpdateRequest,
     db: Session = Depends(get_db),
@@ -84,11 +84,20 @@ def update_status(
     service = EmergencyService(EmergencyRepository(db))
 
     try:
-        return service.update_status(
+        emergency = service.update_status(
             emergency_id,
             current_user.id,
             request,
         )
+        await connection_manager.send_to_user(
+            emergency.citizen_id,
+            build_event("emergency.status_changed", {
+                "emergency_id": str(emergency.id),
+                "status": emergency.status,
+                "severity": emergency.severity,
+            }),
+        )
+        return emergency
 
     except EmergencyNotFound:
         raise HTTPException(
