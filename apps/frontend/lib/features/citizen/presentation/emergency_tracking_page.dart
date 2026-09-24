@@ -21,6 +21,7 @@ class _EmergencyTrackingPageState extends ConsumerState<EmergencyTrackingPage> {
   String _status = 'Pending';
   String _message = 'Waiting for emergency response updates.';
   bool _connected = false;
+  final List<String> _updates = <String>[];
 
   @override
   void initState() {
@@ -51,6 +52,10 @@ class _EmergencyTrackingPageState extends ConsumerState<EmergencyTrackingPage> {
         _connected = eventType == 'connected' || _connected;
         _status = data['status']?.toString() ?? _status;
         _message = _eventMessage(eventType);
+        if (eventType != 'connected') {
+          _updates.insert(0, _message);
+          if (_updates.length > 5) _updates.removeLast();
+        }
       });
     });
   }
@@ -95,6 +100,17 @@ class _EmergencyTrackingPageState extends ConsumerState<EmergencyTrackingPage> {
               subtitle: Text(_status),
             )),
             const SizedBox(height: 16),
+            const Text('Recent updates', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            if (_updates.isEmpty)
+              const Text('No response updates received yet.')
+            else
+              ..._updates.map((update) => ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.circle, size: 8),
+                    title: Text(update),
+                  )),
+            const SizedBox(height: 8),
             const Text('This screen receives updates from the existing LifeLink realtime service. It does not create or modify emergencies.'),
           ],
         ),
