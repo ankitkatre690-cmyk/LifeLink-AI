@@ -52,7 +52,13 @@ class _HospitalHomePageState extends ConsumerState<HospitalHomePage> {
     _realtime = client;
     client.connect();
     _subscription = client.events.listen((event) {
-      if (!mounted || event['event']?.toString() != 'dispatch.hospital_incoming') return;
+      if (!mounted) return;
+      final eventType = event['event']?.toString() ?? '';
+      if (eventType == 'connected') {
+        setState(() => _connected = true);
+        return;
+      }
+      if (eventType != 'dispatch.hospital_incoming') return;
       final data = event['data']; if (data is! Map) return;
       setState(() { _connected = true; _incoming.insert(0, 'Incoming emergency: ${data['emergency_id'] ?? 'Unknown'}'); if (_incoming.length > 5) _incoming.removeLast(); });
     });
