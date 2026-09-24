@@ -3,7 +3,9 @@ import uuid
 from sqlalchemy.orm import Session
 
 from app.database.models.emergency import Emergency
+from app.database.models.dispatch import Dispatch
 from app.database.models.emergency_assignment import EmergencyAssignment
+from app.database.models.hospital_resource import HospitalResource
 from app.database.models.responder_location import ResponderLocation
 from app.database.models.responder_profile import ResponderProfile
 
@@ -75,6 +77,24 @@ class ResponderRepository:
             )
             .first()
         )
+
+    def get_dispatch_by_assignment_id(self, assignment_id: uuid.UUID):
+        return (
+            self.db.query(Dispatch)
+            .filter(Dispatch.assignment_id == assignment_id)
+            .first()
+        )
+
+    def get_hospital_resource(self, resource_id: uuid.UUID):
+        return (
+            self.db.query(HospitalResource)
+            .filter(HospitalResource.id == resource_id)
+            .with_for_update()
+            .first()
+        )
+
+    def commit(self):
+        self.db.commit()
 
     def create_assignment(self, assignment: EmergencyAssignment):
         self.db.add(assignment)
