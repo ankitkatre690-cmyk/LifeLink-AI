@@ -89,14 +89,15 @@ async def update_status(
             current_user.id,
             request,
         )
-        await connection_manager.send_to_user(
-            emergency.citizen_id,
-            build_event("emergency.status_changed", {
-                "emergency_id": str(emergency.id),
-                "status": emergency.status,
-                "severity": emergency.severity,
-            }),
-        )
+        event = build_event("emergency.status_changed", {
+            "emergency_id": str(emergency.id),
+            "citizen_id": str(emergency.citizen_id),
+            "status": emergency.status,
+            "severity": emergency.severity,
+        })
+        await connection_manager.send_to_user(emergency.citizen_id, event)
+        for user_id in FamilyRepository(db).get_member_user_ids_for_creator(emergency.citizen_id):
+            await connection_manager.send_to_user(user_id, event)
         return emergency
 
     except EmergencyNotFound:
