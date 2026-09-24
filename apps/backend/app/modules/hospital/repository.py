@@ -32,7 +32,12 @@ class HospitalRepository:
         return resource
 
     def get_resource(self, resource_id: uuid.UUID):
-        return self.db.query(HospitalResource).filter(HospitalResource.id == resource_id).first()
+        return (
+            self.db.query(HospitalResource)
+            .filter(HospitalResource.id == resource_id)
+            .with_for_update()
+            .first()
+        )
 
     def list_resources(self, hospital_id: uuid.UUID):
         return self.db.query(HospitalResource).filter(HospitalResource.hospital_id == hospital_id).order_by(HospitalResource.resource_type.asc()).all()
