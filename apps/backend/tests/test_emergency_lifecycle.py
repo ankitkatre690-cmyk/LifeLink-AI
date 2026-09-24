@@ -120,18 +120,23 @@ class FakeAssignment:
 
 
 class FakeCompletionRepository:
-    def __init__(self, resource):
+    def __init__(self, resource, emergency_status="Assigned"):
+
         self.profile = type(
             "Profile",
             (),
             {"id": uuid.uuid4(), "status": "Busy"},
         )()
         self.assignment = FakeAssignment()
+        self.emergency = FakeEmergency(emergency_status)
         self.resource = resource
         self.dispatch = FakeDispatch(uuid.uuid4())
 
     def get_assignment(self, assignment_id):
         return self.assignment
+
+    def get_emergency(self, emergency_id):
+        return self.emergency
 
     def get_profile_by_user_id(self, user_id):
         return self.profile
@@ -171,3 +176,31 @@ def test_terminal_assignment_releases_hospital_resource_once(terminal_status):
     )
 
     assert resource.available_count == 1
+
+
+@pytest.mark.parametrize(
+    ("assignment_status", "expected_emergency_status"),
+    [
+        ("Accepted", "Accepted"),
+        ("EnRoute", "EnRoute"),
+        ("OnScene", "OnScene"),
+        ("Completed", "Completed"),
+        ("Cancelled", "Cancelled"),
+    ],
+)
+def test_assignment_status_synchronizes_emergency_status(
+    assignment_status,
+    expected_emergency_status,
+):
+    resource = FakeResource(available_count=0, total_count=1)
+    repository = FakeCompletionRepository(resource)
+    service = ResponderService(repository)
+
+    service.update_assignment(
+        FakeUser(),
+        repository.assignment.id,
+        assignment_status,
+        None,
+    )
+
+    assert repository.emergency.status == expected_emergency_status
