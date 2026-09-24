@@ -72,6 +72,7 @@ class DispatchService:
             emergency_id=emergency.id,
             assignment_id=assignment.id,
             hospital_id=hospital.id,
+            resource_id=resource.id,
             distance_km=round(distance_km, 3),
             eta_minutes=eta_minutes,
             dispatch_status="Assigned",
