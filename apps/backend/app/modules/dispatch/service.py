@@ -57,46 +57,46 @@ class DispatchService:
 
         resource, hospital = hospital_result
 
-        assignment = EmergencyAssignment(
-            emergency_id=emergency.id,
-            responder_id=responder.id,
-            status="Assigned",
-            distance_km=round(distance_km, 3),
-            eta_minutes=eta_minutes,
-            notes="Automatically assigned by dispatch engine.",
-        )
-        self.repository.create_assignment(assignment)
-
-        responder.status = "Busy"
-        emergency.status = "Assigned"
-
-        resource.available_count -= 1
-        resource.is_available = resource.available_count > 0
-
-        dispatch = Dispatch(
-            emergency_id=emergency.id,
-            assignment_id=assignment.id,
-            hospital_id=hospital.id,
-            resource_id=resource.id,
-            distance_km=round(distance_km, 3),
-            eta_minutes=eta_minutes,
-            dispatch_status="Assigned",
-        )
-        self.repository.create_dispatch(dispatch)
-
-        self.repository.create_log(
-            DispatchLog(
-                dispatch_id=dispatch.id,
-                status="Assigned",
-                message=(
-                    f"Responder {responder.id} assigned at "
-                    f"{round(distance_km, 3)} km; ETA {eta_minutes} minutes. "
-                    f"Hospital {hospital.id} resource reserved."
-                ),
-            )
-        )
-
         try:
+            assignment = EmergencyAssignment(
+                emergency_id=emergency.id,
+                responder_id=responder.id,
+                status="Assigned",
+                distance_km=round(distance_km, 3),
+                eta_minutes=eta_minutes,
+                notes="Automatically assigned by dispatch engine.",
+            )
+            self.repository.create_assignment(assignment)
+
+            responder.status = "Busy"
+            emergency.status = "Assigned"
+
+            resource.available_count -= 1
+            resource.is_available = resource.available_count > 0
+
+            dispatch = Dispatch(
+                emergency_id=emergency.id,
+                assignment_id=assignment.id,
+                hospital_id=hospital.id,
+                resource_id=resource.id,
+                distance_km=round(distance_km, 3),
+                eta_minutes=eta_minutes,
+                dispatch_status="Assigned",
+            )
+            self.repository.create_dispatch(dispatch)
+
+            self.repository.create_log(
+                DispatchLog(
+                    dispatch_id=dispatch.id,
+                    status="Assigned",
+                    message=(
+                        f"Responder {responder.id} assigned at "
+                        f"{round(distance_km, 3)} km; ETA {eta_minutes} minutes. "
+                        f"Hospital {hospital.id} resource reserved."
+                    ),
+                )
+            )
+
             self.repository.commit()
         except Exception:
             self.repository.rollback()
