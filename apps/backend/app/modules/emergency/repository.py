@@ -69,14 +69,19 @@ class EmergencyRepository:
             self.db.query(EmergencyAssignment)
             .filter(
                 EmergencyAssignment.emergency_id == emergency_id,
-                EmergencyAssignment.status.in_({
-                    "Assigned", "Accepted", "EnRoute", "OnScene"
-                }),
+                EmergencyAssignment.status.in_(
+                    {"Assigned", "Accepted", "EnRoute", "OnScene"}
+                ),
             )
             .first()
         )
 
-    def user_can_view_emergency(self, emergency_id: UUID, user_id: UUID, role: str | None):
+    def user_can_view_emergency(
+        self,
+        emergency_id: UUID,
+        user_id: UUID,
+        role: str | None,
+    ):
         if role in {"Police", "Admin"}:
             return True
 
@@ -94,8 +99,14 @@ class EmergencyRepository:
 
         return (
             self.db.query(Emergency.id)
-            .outerjoin(FamilyGroup, FamilyGroup.created_by == user_id)
-            .outerjoin(FamilyMember, FamilyMember.family_group_id == FamilyGroup.id)
+            .outerjoin(
+                FamilyGroup,
+                FamilyGroup.created_by == Emergency.citizen_id,
+            )
+            .outerjoin(
+                FamilyMember,
+                FamilyMember.family_group_id == FamilyGroup.id,
+            )
             .filter(
                 Emergency.id == emergency_id,
                 (
