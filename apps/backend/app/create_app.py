@@ -9,6 +9,7 @@ from app.modules.emergency.router import router as emergency_router
 from app.modules.family.router import router as family_router
 from app.modules.hospital.router import router as hospital_router
 from app.modules.notifications.router import router as notifications_router
+from app.modules.notifications.device_token_router import router as device_token_router
 from app.modules.police.router import router as police_router
 from app.modules.responder.router import router as responder_router
 from app.realtime.router import router as realtime_router
@@ -31,6 +32,7 @@ def create_app():
     app.include_router(hospital_router, prefix=api_prefix)
     app.include_router(dispatch_router, prefix=api_prefix)
     app.include_router(notifications_router, prefix=api_prefix)
+    app.include_router(device_token_router, prefix=api_prefix)
     app.include_router(police_router, prefix=api_prefix)
     app.include_router(admin_router, prefix=api_prefix)
     app.include_router(ai_router, prefix=api_prefix)
