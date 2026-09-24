@@ -22,6 +22,11 @@ class DispatchService:
         if emergency is None:
             raise EmergencyNotFound()
 
+        if emergency.status in {"Completed", "Cancelled"}:
+            raise ValueError(
+                f"Cannot dispatch a terminal emergency: {emergency.status}"
+            )
+
         if self.repository.get_dispatch_for_emergency(emergency_id):
             raise DispatchAlreadyExists()
 
