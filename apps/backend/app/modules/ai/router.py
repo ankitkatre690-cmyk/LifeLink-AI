@@ -12,6 +12,7 @@ from app.modules.ai.schemas import (
 )
 from app.modules.ai.service import AIService
 from app.modules.auth.dependencies import get_current_user
+from app.modules.family.repository import FamilyRepository
 from app.modules.dispatch.exceptions import (
     DispatchAlreadyExists,
     NoAvailableHospitalResource,
@@ -54,9 +55,10 @@ async def detect_emergency(
     # Critical AI detections are allowed to enter the existing dispatch
     # engine directly. High-risk detections create the emergency and notify
     # the response pipeline; dispatch remains an explicit operational action.
+    dispatch = None
     if result.risk_level is EmergencyRiskLevel.CRITICAL:
         try:
-            DispatchService(DispatchRepository(db)).dispatch_emergency(
+            dispatch = DispatchService(DispatchRepository(db)).dispatch_emergency(
                 result.emergency_id
             )
             dispatch_created = True
@@ -65,6 +67,54 @@ async def detect_emergency(
             # dispatch cannot currently be completed. Operators can retry
             # through the existing dispatch workflow.
             dispatch_created = False
+
+    if dispatch_created and dispatch is not None:
+        dispatch_event = build_event(
+            "dispatch.assigned",
+            {
+                "dispatch_id": str(dispatch.id),
+                "emergency_id": str(dispatch.emergency_id),
+                "responder_id": str(dispatch.assignment.responder_id),
+                "hospital_id": str(dispatch.hospital_id) if dispatch.hospital_id else None,
+                "distance_km": dispatch.distance_km,
+                "eta_minutes": dispatch.eta_minutes,
+                "status": dispatch.dispatch_status,
+            },
+        )
+        await connection_manager.send_to_user(dispatch.emergency.citizen_id, dispatch_event)
+        for user_id in FamilyRepository(db).get_member_user_ids_for_creator(
+            dispatch.emergency.citizen_id
+        ):
+            await connection_manager.send_to_user(user_id, dispatch_event)
+
+        await connection_manager.send_to_user(
+            dispatch.assignment.responder.user_id,
+            build_event(
+                "dispatch.assignment",
+                {
+                    "dispatch_id": str(dispatch.id),
+                    "emergency_id": str(dispatch.emergency_id),
+                    "assignment_id": str(dispatch.assignment_id),
+                    "distance_km": dispatch.distance_km,
+                    "eta_minutes": dispatch.eta_minutes,
+                    "status": dispatch.dispatch_status,
+                },
+            ),
+        )
+
+        if dispatch.hospital is not None:
+            await connection_manager.send_to_user(
+                dispatch.hospital.user_id,
+                build_event(
+                    "dispatch.hospital_incoming",
+                    {
+                        "dispatch_id": str(dispatch.id),
+                        "emergency_id": str(dispatch.emergency_id),
+                        "hospital_id": str(dispatch.hospital_id),
+                        "status": dispatch.dispatch_status,
+                    },
+                ),
+            )
 
     await connection_manager.send_to_user(
         current_user.id,
