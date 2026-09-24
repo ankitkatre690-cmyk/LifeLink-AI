@@ -210,7 +210,7 @@ class ResponderService:
                 f"{previous_status} -> {status}"
             )
 
-        emergency = self.repository.get_emergency(assignment.emergency_id)
+        emergency = self.repository.get_emergency_for_update(assignment.emergency_id)
         if emergency is None:
             raise EmergencyNotFound()
 
