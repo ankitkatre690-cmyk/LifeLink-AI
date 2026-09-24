@@ -2,8 +2,10 @@ import uuid
 
 import pytest
 
+from app.modules.dispatch.exceptions import DispatchAlreadyExists
 from app.modules.dispatch.service import DispatchService
 from app.modules.police.service import ALLOWED_CASE_TRANSITIONS
+from app.modules.responder.exceptions import AssignmentAlreadyExists
 from app.modules.responder.service import ResponderService
 
 
@@ -213,7 +215,7 @@ def test_responder_assignment_rejects_existing_active_assignment():
         status="Assigned"
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(AssignmentAlreadyExists):
         ResponderService(repository).create_assignment(
             FakeUser(),
             type("Request", (), {
@@ -233,5 +235,5 @@ def test_dispatch_repository_guard_is_checked_before_responder_selection():
     emergency = FakeEmergency("Pending")
     repository = DispatchGuardRepository(emergency)
 
-    with pytest.raises(Exception):
+    with pytest.raises(DispatchAlreadyExists):
         DispatchService(repository).dispatch_emergency(emergency.id)
