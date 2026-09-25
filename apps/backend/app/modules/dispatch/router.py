@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
@@ -21,6 +22,10 @@ from app.modules.dispatch.realtime import publish_dispatch_events
 
 
 router = APIRouter(prefix="/dispatch", tags=["Dispatch"])
+
+
+class DispatchStatusUpdate(BaseModel):
+    status: str = Field(min_length=1, max_length=32)
 
 
 def _service(db: Session) -> DispatchService:
@@ -56,6 +61,25 @@ async def create_dispatch(
         raise HTTPException(409, "No available responder with a current location.")
     except NoAvailableHospitalResource:
         raise HTTPException(409, "No hospital has an available resource.")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@router.patch("/{dispatch_id}/status", response_model=DispatchResponse)
+def update_dispatch_status(
+    dispatch_id: UUID,
+    request: DispatchStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("Police", "Admin")),
+):
+    _ensure_dispatch_role(current_user)
+    try:
+        return _service(db).update_dispatch_status(
+            dispatch_id,
+            request.status,
+        )
+    except DispatchNotFound:
+        raise HTTPException(404, "Dispatch not found.")
     except ValueError as exc:
         raise HTTPException(409, str(exc))
 
