@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.core.audit import audit_request
+from app.core.errors import register_error_handlers
 from app.modules.admin.router import router as admin_router
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
@@ -22,6 +23,7 @@ def create_app():
         version="1.0.0",
     )
 
+    register_error_handlers(app)
     app.middleware("http")(audit_request)
 
     api_prefix = "/api/v1"
