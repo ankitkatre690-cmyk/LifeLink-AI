@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.core.audit import audit_request
 from app.modules.admin.router import router as admin_router
 from app.modules.ai.router import router as ai_router
 from app.modules.auth.router import router as auth_router
@@ -20,6 +21,8 @@ def create_app():
         title="LifeLink AI",
         version="1.0.0",
     )
+
+    app.middleware("http")(audit_request)
 
     api_prefix = "/api/v1"
 
