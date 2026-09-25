@@ -1,7 +1,7 @@
 """enforce dispatch and assignment lifecycle consistency
 
 Revision ID: f1a2b3c4d5e6
-Revises: e2f6a1b3c7d9
+Revises: a7b9c2d4e6f8
 Create Date: 2026-09-24
 """
 from typing import Sequence, Union
@@ -10,7 +10,7 @@ from alembic import op
 
 
 revision: str = "f1a2b3c4d5e6"
-down_revision: Union[str, Sequence[str], None] = "e2f6a1b3c7d9"
+down_revision: Union[str, Sequence[str], None] = "a7b9c2d4e6f8"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -36,8 +36,7 @@ def upgrade() -> None:
             dispatch_status text;
         BEGIN
             IF TG_TABLE_NAME = 'dispatches' THEN
-                SELECT status
-                INTO assignment_status
+                SELECT status INTO assignment_status
                 FROM emergency_assignments
                 WHERE id = NEW.assignment_id;
 
@@ -45,14 +44,11 @@ def upgrade() -> None:
                    AND NEW.dispatch_status <> assignment_status THEN
                     RAISE EXCEPTION
                         'Dispatch % status % must match assignment % status %',
-                        NEW.id,
-                        NEW.dispatch_status,
-                        NEW.assignment_id,
-                        assignment_status;
+                        NEW.id, NEW.dispatch_status,
+                        NEW.assignment_id, assignment_status;
                 END IF;
             ELSE
-                SELECT d.dispatch_status
-                INTO dispatch_status
+                SELECT d.dispatch_status INTO dispatch_status
                 FROM dispatches AS d
                 WHERE d.assignment_id = NEW.id;
 
@@ -60,9 +56,7 @@ def upgrade() -> None:
                    AND dispatch_status <> NEW.status THEN
                     RAISE EXCEPTION
                         'Assignment % status % must match dispatch status %',
-                        NEW.id,
-                        NEW.status,
-                        dispatch_status;
+                        NEW.id, NEW.status, dispatch_status;
                 END IF;
             END IF;
 
@@ -97,16 +91,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute(
-        "DROP TRIGGER IF EXISTS assignment_dispatch_status_consistency "
-        "ON emergency_assignments"
+        "DROP TRIGGER IF EXISTS assignment_dispatch_status_consistency ON emergency_assignments"
     )
     op.execute(
-        "DROP TRIGGER IF EXISTS dispatch_assignment_status_consistency "
-        "ON dispatches"
+        "DROP TRIGGER IF EXISTS dispatch_assignment_status_consistency ON dispatches"
     )
-    op.execute(
-        "DROP FUNCTION IF EXISTS validate_dispatch_assignment_status()"
-    )
+    op.execute("DROP FUNCTION IF EXISTS validate_dispatch_assignment_status()")
     op.drop_constraint(
         "ck_dispatches_dispatch_status_valid",
         "dispatches",
