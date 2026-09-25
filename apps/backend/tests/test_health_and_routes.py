@@ -63,6 +63,37 @@ def test_emergency_status_machine_defines_terminal_states():
     assert ALLOWED_STATUS_TRANSITIONS["Cancelled"] == set()
 
 
+def test_dispatch_state_machine_rejects_skipping_states():
+    import pytest
+    from app.modules.dispatch.state import validate_dispatch_transition
+
+    validate_dispatch_transition("Assigned", "Accepted")
+    validate_dispatch_transition("Accepted", "EnRoute")
+    validate_dispatch_transition("EnRoute", "OnScene")
+    validate_dispatch_transition("OnScene", "Completed")
+
+    with pytest.raises(ValueError, match="Invalid dispatch transition"):
+        validate_dispatch_transition("Assigned", "Completed")
+
+
+def test_assignment_state_machine_rejects_resurrection():
+    import pytest
+    from app.modules.dispatch.state import validate_assignment_transition
+
+    with pytest.raises(ValueError, match="Invalid assignment transition"):
+        validate_assignment_transition("Completed", "Accepted")
+
+    with pytest.raises(ValueError, match="Invalid assignment transition"):
+        validate_assignment_transition("Cancelled", "Assigned")
+
+
+def test_emergency_state_machine_allows_cancellation_before_completion():
+    from app.modules.dispatch.state import validate_emergency_transition
+
+    validate_emergency_transition("Pending", "Cancelled")
+    validate_emergency_transition("Assigned", "Cancelled")
+    validate_emergency_transition("InProgress", "Cancelled")
+
 
 def test_require_roles_allows_authorized_role():
     from app.modules.auth.dependencies import require_roles
