@@ -59,6 +59,13 @@ class User(UUIDMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
     )
 
+    hospital_profile = relationship(
+        "Hospital",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
     family_groups = relationship(
         "FamilyGroup",
         foreign_keys="FamilyGroup.created_by",
