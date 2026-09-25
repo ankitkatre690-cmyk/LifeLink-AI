@@ -61,3 +61,15 @@ class Emergency(UUIDMixin, TimestampMixin, Base):
         back_populates="emergency",
         cascade="all, delete-orphan",
     )
+
+    assignments = relationship(
+        "EmergencyAssignment",
+        back_populates="emergency",
+        cascade="all, delete-orphan",
+    )
+
+    dispatches = relationship(
+        "Dispatch",
+        back_populates="emergency",
+        cascade="all, delete-orphan",
+    )

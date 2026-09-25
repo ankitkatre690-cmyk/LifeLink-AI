@@ -1,11 +1,14 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.realtime.events import build_event
+from app.realtime.manager import connection_manager
 from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import require_roles
+from app.modules.family.repository import FamilyRepository
 from app.modules.responder.exceptions import (
     AssignmentAlreadyExists,
     EmergencyAssignmentNotFound,
@@ -45,7 +48,7 @@ def _service(db: Session) -> ResponderService:
 def create_responder_profile(
     request: ResponderCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).create_profile(current_user, request)
@@ -61,7 +64,7 @@ def create_responder_profile(
 )
 def get_my_responder_profile(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).get_my_profile(current_user)
@@ -77,7 +80,7 @@ def get_my_responder_profile(
 )
 def list_responders(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     return _service(db).list_profiles()
 
@@ -89,7 +92,7 @@ def list_responders(
 def get_responder(
     responder_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     try:
         return _service(db).get_profile(responder_id)
@@ -104,7 +107,7 @@ def get_responder(
 def update_my_status(
     request: ResponderStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).update_status(current_user, request.status)
@@ -113,7 +116,7 @@ def update_my_status(
     except ResponderProfileNotFound:
         raise HTTPException(404, "Responder profile not found.")
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(409, str(exc))
 
 
 @router.patch(
@@ -123,7 +126,7 @@ def update_my_status(
 def update_my_location(
     request: ResponderLocationUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).update_location(
@@ -145,7 +148,7 @@ def update_my_location(
 def create_assignment(
     request: AssignmentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Police", "Admin")),
 ):
     try:
         return _service(db).create_assignment(current_user, request)
@@ -157,6 +160,8 @@ def create_assignment(
         raise HTTPException(404, "Emergency not found.")
     except AssignmentAlreadyExists:
         raise HTTPException(409, "Assignment already exists.")
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
 
 
 @router.get(
@@ -166,7 +171,7 @@ def create_assignment(
 def get_assignment(
     assignment_id: UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
         return _service(db).get_assignment(current_user, assignment_id)
@@ -180,19 +185,36 @@ def get_assignment(
     "/assignments/{assignment_id}",
     response_model=AssignmentResponse,
 )
-def update_assignment(
+async def update_assignment(
     assignment_id: UUID,
     request: AssignmentStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Responder")),
 ):
     try:
-        return _service(db).update_assignment(
+        assignment = _service(db).update_assignment(
             current_user,
             assignment_id,
             request.status,
             request.notes,
         )
+        event = build_event("responder.assignment_status_changed", {
+            "assignment_id": str(assignment.id),
+            "emergency_id": str(assignment.emergency_id),
+            "responder_id": str(assignment.responder_id),
+            "status": assignment.status,
+            "emergency_status": assignment.emergency.status,
+            "notes": assignment.notes,
+        })
+        await connection_manager.send_to_user(
+            assignment.emergency.citizen_id,
+            event,
+        )
+        for user_id in FamilyRepository(db).get_member_user_ids_for_creator(
+            assignment.emergency.citizen_id
+        ):
+            await connection_manager.send_to_user(user_id, event)
+        return assignment
     except InvalidResponderRole:
         raise HTTPException(403, "Current user does not have Responder role.")
     except EmergencyAssignmentNotFound:
