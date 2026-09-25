@@ -131,15 +131,35 @@ class DispatchService:
         emergency = self.repository.get_emergency_for_update(dispatch.emergency_id)
         if emergency is None:
             raise EmergencyNotFound()
-        assignment.status = status
-        dispatch.dispatch_status = status
-        emergency.status = status
-        if status in FINAL_DISPATCH_STATUSES and dispatch.resource_id is not None:
+
+        resource = None
+        if dispatch.resource_id is not None:
             resource = self.repository.get_hospital_resource(dispatch.resource_id)
-            if resource is not None:
+
+        expected = previous_status
+        if assignment.status != expected or emergency.status not in {expected, "InProgress" if expected == "Accepted" else expected}:
+            raise ValueError("Dispatch, assignment, and emergency states are out of sync.")
+
+        try:
+            dispatch.dispatch_status = status
+            assignment.status = status
+            emergency.status = "InProgress" if status in {"Accepted", "EnRoute", "OnScene"} else status
+
+            if status in FINAL_DISPATCH_STATUSES and resource is not None:
                 resource.available_count = min(resource.total_count, resource.available_count + 1)
                 resource.is_available = resource.available_count > 0
-        self.repository.create_log(DispatchLog(dispatch_id=dispatch.id, status=status))
-        self.repository.commit()
+
+            self.repository.create_log(
+                DispatchLog(
+                    dispatch_id=dispatch.id,
+                    status=status,
+                    message=f"Dispatch status changed: {previous_status} -> {status}.",
+                )
+            )
+            self.repository.commit()
+        except Exception:
+            self.repository.rollback()
+            raise
+
         self.repository.refresh(dispatch)
         return dispatch
