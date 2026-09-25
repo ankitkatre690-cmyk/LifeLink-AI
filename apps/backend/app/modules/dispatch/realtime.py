@@ -32,7 +32,7 @@ async def publish_dispatch_events(dispatch, family_user_ids=()):
         build_event("dispatch.assignment", {
             "dispatch_id": str(dispatch.id),
             "emergency_id": str(dispatch.emergency_id),
-            "assignment_id": str(dispatch.assignment_id),
+            "assignment_id": str(dispatch.assignment.id),
             "distance_km": dispatch.distance_km,
             "eta_minutes": dispatch.eta_minutes,
             "status": dispatch.dispatch_status,
