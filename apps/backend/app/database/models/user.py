@@ -22,6 +22,7 @@ class User(UUIDMixin, TimestampMixin, Base):
     responder_profile = relationship("ResponderProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     hospital_profile = relationship("Hospital", back_populates="user", uselist=False, cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="recipient", cascade="all, delete-orphan")
+    women_safety_profile = relationship("WomenSafetyProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     family_groups = relationship("FamilyGroup", foreign_keys="FamilyGroup.created_by", back_populates="creator")
     family_memberships = relationship("FamilyMember", foreign_keys="FamilyMember.user_id", back_populates="user")
     emergencies = relationship("Emergency", back_populates="citizen", cascade="all, delete-orphan")
