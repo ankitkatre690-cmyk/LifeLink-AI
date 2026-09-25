@@ -10,6 +10,7 @@ from app.modules.dispatch.exceptions import (
     NoAvailableResponder,
 )
 from app.modules.dispatch.repository import DispatchRepository
+from app.modules.dispatch.state import validate_dispatch_transition
 from app.modules.dispatch.utils import estimate_eta_minutes, haversine_distance_km
 
 
@@ -140,3 +141,34 @@ class DispatchService:
     ):
         self.get_dispatch_for_user(dispatch_id, user_id, role)
         return self.repository.get_logs(dispatch_id)
+
+    def update_dispatch_status(
+        self,
+        dispatch_id: uuid.UUID,
+        status: str,
+    ):
+        dispatch = self.get_dispatch(dispatch_id)
+        previous_status = dispatch.dispatch_status
+
+        if status == previous_status:
+            return dispatch
+
+        try:
+            validate_dispatch_transition(previous_status, status)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid dispatch status transition: "
+                f"{previous_status} -> {status}"
+            ) from exc
+
+        dispatch.dispatch_status = status
+        self.repository.create_log(
+            DispatchLog(
+                dispatch_id=dispatch.id,
+                status=status,
+                message=f"Dispatch status changed: {previous_status} -> {status}.",
+            )
+        )
+        self.repository.commit()
+        self.repository.refresh(dispatch)
+        return dispatch
