@@ -14,6 +14,9 @@ from app.modules.dispatch.state import validate_dispatch_transition
 from app.modules.dispatch.utils import estimate_eta_minutes, haversine_distance_km
 
 
+FINAL_DISPATCH_STATUSES = {"Completed", "Cancelled"}
+
+
 class DispatchService:
     def __init__(self, repository: DispatchRepository):
         self.repository = repository
@@ -24,17 +27,13 @@ class DispatchService:
             raise EmergencyNotFound()
 
         if emergency.status in {"Completed", "Cancelled"}:
-            raise ValueError(
-                f"Cannot dispatch a terminal emergency: {emergency.status}"
-            )
-
+            raise ValueError(f"Cannot dispatch a terminal emergency: {emergency.status}")
         if self.repository.get_dispatch_for_emergency(emergency_id):
             raise DispatchAlreadyExists()
 
         responders = self.repository.get_available_responders()
         if not responders:
             raise NoAvailableResponder()
-
         distance_km, responder = min(
             (
                 (
@@ -51,11 +50,9 @@ class DispatchService:
             key=lambda item: item[0],
         )
         eta_minutes = estimate_eta_minutes(distance_km)
-
         hospital_result = self.repository.get_available_hospital_resource()
         if hospital_result is None:
             raise NoAvailableHospitalResource()
-
         resource, hospital = hospital_result
 
         try:
@@ -68,10 +65,8 @@ class DispatchService:
                 notes="Automatically assigned by dispatch engine.",
             )
             self.repository.create_assignment(assignment)
-
             responder.status = "Busy"
             emergency.status = "Assigned"
-
             if resource.available_count <= 0:
                 raise NoAvailableHospitalResource()
             resource.available_count -= 1
@@ -87,19 +82,16 @@ class DispatchService:
                 dispatch_status="Assigned",
             )
             self.repository.create_dispatch(dispatch)
-
             self.repository.create_log(
                 DispatchLog(
                     dispatch_id=dispatch.id,
                     status="Assigned",
                     message=(
-                        f"Responder {responder.id} assigned at "
-                        f"{round(distance_km, 3)} km; ETA {eta_minutes} minutes. "
-                        f"Hospital {hospital.id} resource reserved."
+                        f"Responder {responder.id} assigned at {round(distance_km, 3)} km; "
+                        f"ETA {eta_minutes} minutes. Hospital {hospital.id} resource reserved."
                     ),
                 )
             )
-
             self.repository.commit()
         except Exception:
             self.repository.rollback()
@@ -114,61 +106,58 @@ class DispatchService:
             raise DispatchNotFound()
         return dispatch
 
-    def get_dispatch_for_user(
-        self,
-        dispatch_id: uuid.UUID,
-        user_id: uuid.UUID,
-        role: str | None,
-    ):
-        dispatch = self.repository.get_dispatch(dispatch_id)
-        if dispatch is None:
-            raise DispatchNotFound()
-
-        if not self.repository.user_can_view_dispatch(
-            dispatch_id,
-            user_id,
-            role,
-        ):
+    def get_dispatch_for_user(self, dispatch_id: uuid.UUID, user_id: uuid.UUID, role: str | None):
+        dispatch = self.get_dispatch(dispatch_id)
+        if not self.repository.user_can_view_dispatch(dispatch_id, user_id, role):
             raise PermissionError("You are not authorized to view this dispatch.")
-
         return dispatch
 
-    def get_logs_for_user(
-        self,
-        dispatch_id: uuid.UUID,
-        user_id: uuid.UUID,
-        role: str | None,
-    ):
+    def get_logs_for_user(self, dispatch_id: uuid.UUID, user_id: uuid.UUID, role: str | None):
         self.get_dispatch_for_user(dispatch_id, user_id, role)
         return self.repository.get_logs(dispatch_id)
 
-    def update_dispatch_status(
-        self,
-        dispatch_id: uuid.UUID,
-        status: str,
-    ):
+    def update_dispatch_status(self, dispatch_id: uuid.UUID, status: str):
         dispatch = self.get_dispatch(dispatch_id)
         previous_status = dispatch.dispatch_status
-
         if status == previous_status:
             return dispatch
+        validate_dispatch_transition(previous_status, status)
+
+        assignment = self.repository.get_assignment(dispatch.assignment_id)
+        if assignment is None:
+            raise ValueError("Dispatch assignment is missing.")
+        emergency = self.repository.get_emergency_for_update(dispatch.emergency_id)
+        if emergency is None:
+            raise EmergencyNotFound()
+
+        resource = None
+        if dispatch.resource_id is not None:
+            resource = self.repository.get_hospital_resource(dispatch.resource_id)
+
+        expected = previous_status
+        if assignment.status != expected or emergency.status not in {expected, "InProgress" if expected == "Accepted" else expected}:
+            raise ValueError("Dispatch, assignment, and emergency states are out of sync.")
 
         try:
-            validate_dispatch_transition(previous_status, status)
-        except ValueError as exc:
-            raise ValueError(
-                f"Invalid dispatch status transition: "
-                f"{previous_status} -> {status}"
-            ) from exc
+            dispatch.dispatch_status = status
+            assignment.status = status
+            emergency.status = "InProgress" if status in {"Accepted", "EnRoute", "OnScene"} else status
 
-        dispatch.dispatch_status = status
-        self.repository.create_log(
-            DispatchLog(
-                dispatch_id=dispatch.id,
-                status=status,
-                message=f"Dispatch status changed: {previous_status} -> {status}.",
+            if status in FINAL_DISPATCH_STATUSES and resource is not None:
+                resource.available_count = min(resource.total_count, resource.available_count + 1)
+                resource.is_available = resource.available_count > 0
+
+            self.repository.create_log(
+                DispatchLog(
+                    dispatch_id=dispatch.id,
+                    status=status,
+                    message=f"Dispatch status changed: {previous_status} -> {status}.",
+                )
             )
-        )
-        self.repository.commit()
+            self.repository.commit()
+        except Exception:
+            self.repository.rollback()
+            raise
+
         self.repository.refresh(dispatch)
         return dispatch
