@@ -40,46 +40,27 @@ class User(UUIDMixin, TimestampMixin, Base):
         default=True,
     )
 
-    role = relationship(
-        "Role",
-        back_populates="users",
-    )
+    role = relationship("Role", back_populates="users")
 
     citizen_profile = relationship(
-        "CitizenProfile",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
+        "CitizenProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-
     responder_profile = relationship(
-        "ResponderProfile",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
+        "ResponderProfile", back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-
     hospital_profile = relationship(
-        "Hospital",
-        back_populates="user",
-        uselist=False,
-        cascade="all, delete-orphan",
+        "Hospital", back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+    notifications = relationship(
+        "Notification", back_populates="recipient", cascade="all, delete-orphan"
     )
 
     family_groups = relationship(
-        "FamilyGroup",
-        foreign_keys="FamilyGroup.created_by",
-        back_populates="creator",
+        "FamilyGroup", foreign_keys="FamilyGroup.created_by", back_populates="creator"
     )
-
     family_memberships = relationship(
-        "FamilyMember",
-        foreign_keys="FamilyMember.user_id",
-        back_populates="user",
+        "FamilyMember", foreign_keys="FamilyMember.user_id", back_populates="user"
     )
-
     emergencies = relationship(
-        "Emergency",
-        back_populates="citizen",
-        cascade="all, delete-orphan",
+        "Emergency", back_populates="citizen", cascade="all, delete-orphan"
     )
