@@ -20,26 +20,17 @@ class DispatchRepository:
         return self.db.query(Emergency).filter(Emergency.id == emergency_id).first()
 
     def get_emergency_for_update(self, emergency_id: uuid.UUID):
-        return (
-            self.db.query(Emergency)
-            .filter(Emergency.id == emergency_id)
-            .with_for_update()
-            .first()
-        )
+        return self.db.query(Emergency).filter(Emergency.id == emergency_id).with_for_update().first()
 
     def get_dispatch_for_emergency(self, emergency_id: uuid.UUID):
-        return self.db.query(Dispatch).filter(
-            Dispatch.emergency_id == emergency_id
-        ).first()
+        return self.db.query(Dispatch).filter(Dispatch.emergency_id == emergency_id).first()
 
     def get_active_assignment_for_emergency(self, emergency_id: uuid.UUID):
         return (
             self.db.query(EmergencyAssignment)
             .filter(
                 EmergencyAssignment.emergency_id == emergency_id,
-                EmergencyAssignment.status.in_(
-                    ["Assigned", "Accepted", "EnRoute", "OnScene"]
-                ),
+                EmergencyAssignment.status.in_(["Assigned", "Accepted", "EnRoute", "OnScene"]),
             )
             .first()
         )
@@ -65,10 +56,7 @@ class DispatchRepository:
                 HospitalResource.available_count > 0,
                 HospitalResource.is_available.is_(True),
             )
-            .order_by(
-                HospitalResource.available_count.desc(),
-                Hospital.name.asc(),
-            )
+            .order_by(HospitalResource.available_count.desc(), Hospital.name.asc())
             .with_for_update(of=HospitalResource)
             .first()
         )
@@ -97,15 +85,15 @@ class DispatchRepository:
     def get_dispatch(self, dispatch_id: uuid.UUID):
         return self.db.query(Dispatch).filter(Dispatch.id == dispatch_id).first()
 
-    def user_can_view_dispatch(
-        self,
-        dispatch_id: uuid.UUID,
-        user_id: uuid.UUID,
-        role: str | None,
-    ):
+    def get_assignment(self, assignment_id: uuid.UUID):
+        return self.db.query(EmergencyAssignment).filter(EmergencyAssignment.id == assignment_id).first()
+
+    def get_hospital_resource(self, resource_id: uuid.UUID):
+        return self.db.query(HospitalResource).filter(HospitalResource.id == resource_id).with_for_update().first()
+
+    def user_can_view_dispatch(self, dispatch_id: uuid.UUID, user_id: uuid.UUID, role: str | None):
         if role in {"Police", "Admin"}:
             return True
-
         query = (
             self.db.query(Dispatch.id)
             .outerjoin(EmergencyAssignment, Dispatch.assignment_id == EmergencyAssignment.id)
@@ -113,22 +101,14 @@ class DispatchRepository:
             .outerjoin(Hospital, Dispatch.hospital_id == Hospital.id)
             .filter(Dispatch.id == dispatch_id)
         )
-
         if role == "Responder":
             return query.filter(ResponderProfile.user_id == user_id).first() is not None
-
         if role == "Hospital":
             return query.filter(Hospital.user_id == user_id).first() is not None
-
         return False
 
     def get_logs(self, dispatch_id: uuid.UUID):
-        return (
-            self.db.query(DispatchLog)
-            .filter(DispatchLog.dispatch_id == dispatch_id)
-            .order_by(DispatchLog.created_at.asc())
-            .all()
-        )
+        return self.db.query(DispatchLog).filter(DispatchLog.dispatch_id == dispatch_id).order_by(DispatchLog.created_at.asc()).all()
 
     def commit(self):
         self.db.commit()
