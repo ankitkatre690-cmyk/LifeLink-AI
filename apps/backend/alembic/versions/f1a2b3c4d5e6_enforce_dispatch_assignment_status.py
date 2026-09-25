@@ -1,7 +1,7 @@
 """enforce dispatch and assignment lifecycle consistency
 
 Revision ID: f1a2b3c4d5e6
-Revises: a7b9c2d4e6f8
+Revises: e2f6a1b3c7d9
 Create Date: 2026-09-24
 """
 from typing import Sequence, Union
@@ -10,7 +10,7 @@ from alembic import op
 
 
 revision: str = "f1a2b3c4d5e6"
-down_revision: Union[str, Sequence[str], None] = "a7b9c2d4e6f8"
+down_revision: Union[str, Sequence[str], None] = "e2f6a1b3c7d9"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
