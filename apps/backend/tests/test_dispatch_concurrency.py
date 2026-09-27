@@ -10,6 +10,7 @@ class ConcurrentRepository:
     def __init__(self):
         self.emergency_id = uuid.uuid4()
         self.dispatch = None
+        self.active_assignment = None
         self.lock = threading.Lock()
         self.create_attempts = 0
 
@@ -21,6 +22,10 @@ class ConcurrentRepository:
     def get_dispatch_for_emergency(self, emergency_id):
         with self.lock:
             return self.dispatch
+
+    def get_active_assignment_for_emergency(self, emergency_id):
+        with self.lock:
+            return self.active_assignment
 
     def get_available_responders(self):
         return [SimpleNamespace(id=uuid.uuid4(), latitude=20.1, longitude=78.1, status="Available")]
@@ -34,8 +39,9 @@ class ConcurrentRepository:
     def create_assignment(self, assignment):
         with self.lock:
             self.create_attempts += 1
-            if self.dispatch is not None:
+            if self.active_assignment is not None or self.dispatch is not None:
                 raise DispatchAlreadyExists()
+            self.active_assignment = assignment
         return assignment
 
     def create_dispatch(self, dispatch):
@@ -45,10 +51,17 @@ class ConcurrentRepository:
             self.dispatch = dispatch
         return dispatch
 
-    def create_log(self, log): pass
-    def commit(self): pass
-    def rollback(self): pass
-    def refresh(self, entity): pass
+    def create_log(self, log):
+        pass
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+    def refresh(self, entity):
+        pass
 
 
 def test_concurrent_dispatch_allows_only_one_successful_creation():
