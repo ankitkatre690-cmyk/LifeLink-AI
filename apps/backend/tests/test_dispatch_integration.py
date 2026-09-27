@@ -52,7 +52,6 @@ def test_dispatch_status_updates_related_state_and_releases_resource():
     service = DispatchService(repo)
 
     service.update_dispatch_status(repo.dispatch.id, "Accepted")
-
     assert repo.dispatch.dispatch_status == "Accepted"
     assert repo.assignment.status == "Accepted"
     assert repo.emergency.status == "InProgress"
