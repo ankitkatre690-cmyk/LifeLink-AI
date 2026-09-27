@@ -35,6 +35,9 @@ class FakeRepository:
     def rollback(self):
         self.rolled_back = True
 
+    def refresh(self, entity):
+        return entity
+
 
 def request():
     return SimpleNamespace(
