@@ -3,21 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/network/api_client.dart';
-import '../../../core/realtime/realtime_client.dart';
-import '../../../core/storage/secure_storage.dart';
+import '../../../core/realtime/realtime_provider.dart';
+import '../../../core/realtime/websocket_service.dart';
 
 class EmergencyTrackingPage extends ConsumerStatefulWidget {
   const EmergencyTrackingPage({required this.emergencyId, super.key});
+
   final String emergencyId;
 
   @override
-  ConsumerState<EmergencyTrackingPage> createState() => _EmergencyTrackingPageState();
+  ConsumerState<EmergencyTrackingPage> createState() =>
+      _EmergencyTrackingPageState();
 }
 
-class _EmergencyTrackingPageState extends ConsumerState<EmergencyTrackingPage> {
-  RealtimeClient? _client;
-  StreamSubscription<Map<String, dynamic>>? _subscription;
+class _EmergencyTrackingPageState
+    extends ConsumerState<EmergencyTrackingPage> {
+  StreamSubscription<RealtimeEvent>? _subscription;
   String _status = 'Pending';
   String _message = 'Waiting for emergency response updates.';
   bool _connected = false;
@@ -26,56 +27,70 @@ class _EmergencyTrackingPageState extends ConsumerState<EmergencyTrackingPage> {
   @override
   void initState() {
     super.initState();
-    _connect();
+    _subscription = ref.read(realtimeServiceProvider).events.listen(
+      _handleEvent,
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _connected = false;
+          _message = 'Live emergency connection was interrupted.';
+        });
+      },
+    );
   }
 
-  Future<void> _connect() async {
-    final token = await const SecureStorage().readAccessToken();
-    if (!mounted || token == null || token.isEmpty) {
-      setState(() => _message = 'Your session token is unavailable.');
+  void _handleEvent(RealtimeEvent event) {
+    final eventEmergencyId = event.data['emergency_id']?.toString();
+    if (eventEmergencyId != null &&
+        eventEmergencyId != widget.emergencyId) {
       return;
     }
-    final client = RealtimeClient(
-      baseUrl: ref.read(apiClientProvider).dio.options.baseUrl,
-      accessToken: token,
-    );
-    _client = client;
-    client.connect();
-    _subscription = client.events.listen((event) {
-      final data = event['data'];
-      if (data is! Map) return;
-      final eventEmergencyId = data['emergency_id']?.toString();
-      if (eventEmergencyId != null && eventEmergencyId != widget.emergencyId) return;
-      if (!mounted) return;
-      final eventType = event['event']?.toString() ?? 'update';
-      setState(() {
-        _connected = eventType == 'connected' || _connected;
-        _status = data['status']?.toString() ?? _status;
-        _message = _eventMessage(eventType);
-        if (eventType != 'connected') {
-          _updates.insert(0, _message);
-          if (_updates.length > 5) _updates.removeLast();
+
+    if (!mounted) return;
+
+    setState(() {
+      if (event.event == 'connected') {
+        _connected = true;
+      }
+
+      final nextStatus = event.data['status']?.toString();
+      if (nextStatus != null && nextStatus.isNotEmpty) {
+        _status = nextStatus;
+      }
+
+      _message = _eventMessage(event.event);
+
+      if (event.event != 'connected') {
+        _updates.insert(0, _message);
+        if (_updates.length > 5) {
+          _updates.removeLast();
         }
-      });
+      }
     });
   }
 
   String _eventMessage(String eventType) {
     switch (eventType) {
-      case 'connected': return 'Live emergency channel connected.';
-      case 'emergency.created': return 'Emergency registered. Waiting for response assignment.';
-      case 'emergency.status_changed': return 'Emergency status updated.';
-      case 'dispatch.assigned': return 'A responder has been assigned to your emergency.';
-      case 'responder.assignment_status_changed': return 'Responder assignment status updated.';
-      case 'dispatch.hospital_incoming': return 'Hospital coordination has been initiated.';
-      default: return 'New emergency response update received.';
+      case 'connected':
+        return 'Live emergency channel connected.';
+      case 'emergency.created':
+        return 'Emergency registered. Waiting for response assignment.';
+      case 'emergency.status_changed':
+        return 'Emergency status updated.';
+      case 'dispatch.assigned':
+        return 'A responder has been assigned to your emergency.';
+      case 'responder.assignment_status_changed':
+        return 'Responder assignment status updated.';
+      case 'dispatch.hospital_incoming':
+        return 'Hospital coordination has been initiated.';
+      default:
+        return 'New emergency response update received.';
     }
   }
 
   @override
   void dispose() {
     _subscription?.cancel();
-    _client?.dispose();
     super.dispose();
   }
 
@@ -88,30 +103,48 @@ class _EmergencyTrackingPageState extends ConsumerState<EmergencyTrackingPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(child: ListTile(
-              leading: Icon(_connected ? Icons.wifi : Icons.wifi_off),
-              title: Text(_connected ? 'Live connection' : 'Connecting...'),
-              subtitle: Text(_message),
-            )),
+            Card(
+              child: ListTile(
+                leading: Icon(
+                  _connected ? Icons.wifi : Icons.wifi_off,
+                ),
+                title: Text(
+                  _connected
+                      ? 'Live connection'
+                      : 'Waiting for connection...',
+                ),
+                subtitle: Text(_message),
+              ),
+            ),
             const SizedBox(height: 16),
-            Card(child: ListTile(
-              leading: const Icon(Icons.emergency),
-              title: const Text('Emergency status'),
-              subtitle: Text(_status),
-            )),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.emergency),
+                title: const Text('Emergency status'),
+                subtitle: Text(_status),
+              ),
+            ),
             const SizedBox(height: 16),
-            const Text('Recent updates', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Recent updates',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             if (_updates.isEmpty)
               const Text('No response updates received yet.')
             else
-              ..._updates.map((update) => ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.circle, size: 8),
-                    title: Text(update),
-                  )),
+              ..._updates.map(
+                (update) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.circle, size: 8),
+                  title: Text(update),
+                ),
+              ),
             const SizedBox(height: 8),
-            const Text('This screen receives updates from the existing LifeLink realtime service. It does not create or modify emergencies.'),
+            const Text(
+              'This screen uses the shared LifeLink realtime service. '
+              'The API remains authoritative for emergency state.',
+            ),
           ],
         ),
       ),
