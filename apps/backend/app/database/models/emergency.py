@@ -73,3 +73,10 @@ class Emergency(UUIDMixin, TimestampMixin, Base):
         back_populates="emergency",
         cascade="all, delete-orphan",
     )
+
+    police_case = relationship(
+        "PoliceCase",
+        back_populates="emergency",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
