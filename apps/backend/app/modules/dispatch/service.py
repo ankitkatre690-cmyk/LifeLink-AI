@@ -15,6 +15,7 @@ from app.modules.dispatch.utils import estimate_eta_minutes, haversine_distance_
 
 
 FINAL_DISPATCH_STATUSES = {"Completed", "Cancelled"}
+ACTIVE_DISPATCH_STATUSES = {"Accepted", "EnRoute", "OnScene"}
 
 
 class DispatchService:
@@ -136,14 +137,16 @@ class DispatchService:
         if dispatch.resource_id is not None:
             resource = self.repository.get_hospital_resource(dispatch.resource_id)
 
-        expected = previous_status
-        if assignment.status != expected or emergency.status not in {expected, "InProgress" if expected == "Accepted" else expected}:
+        allowed_emergency_states = {expected_status := previous_status}
+        if expected_status in ACTIVE_DISPATCH_STATUSES:
+            allowed_emergency_states.add("InProgress")
+        if assignment.status != expected_status or emergency.status not in allowed_emergency_states:
             raise ValueError("Dispatch, assignment, and emergency states are out of sync.")
 
         try:
             dispatch.dispatch_status = status
             assignment.status = status
-            emergency.status = "InProgress" if status in {"Accepted", "EnRoute", "OnScene"} else status
+            emergency.status = "InProgress" if status in ACTIVE_DISPATCH_STATUSES else status
 
             if status in FINAL_DISPATCH_STATUSES and resource is not None:
                 resource.available_count = min(resource.total_count, resource.available_count + 1)
