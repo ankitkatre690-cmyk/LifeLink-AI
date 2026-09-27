@@ -47,16 +47,31 @@ void main() {
     expect(emergencyId, isNotNull);
 
     final police = api(await login(policeEmail, policePassword));
-    final dispatchResponse = await police.post('/dispatch', data: {'emergency_id': emergencyId});
+    final dispatchResponse = await police.post(
+      '/dispatch',
+      data: {'emergency_id': emergencyId},
+    );
     final dispatch = Map<String, dynamic>.from(dispatchResponse.data as Map);
-    final assignmentId = dispatch['assignment_id']?.toString() ?? dispatch['id']?.toString();
+    final assignmentId = dispatch['assignment_id']?.toString();
     expect(assignmentId, isNotNull);
 
     final responder = api(await login(responderEmail, responderPassword));
-    final accepted = await responder.patch('/responders/assignments/$assignmentId', data: {'status': 'ACCEPTED'});
-    expect(accepted.statusCode, inInclusiveRange(200, 299));
 
-    final enRoute = await responder.patch('/responders/assignments/$assignmentId', data: {'status': 'EN_ROUTE'});
-    expect(enRoute.statusCode, inInclusiveRange(200, 299));
+    Future<void> updateAssignment(String status) async {
+      final response = await responder.patch(
+        '/responders/assignments/$assignmentId',
+        data: {'status': status},
+      );
+      expect(response.statusCode, inInclusiveRange(200, 299));
+    }
+
+    await updateAssignment('Accepted');
+    await updateAssignment('EnRoute');
+    await updateAssignment('OnScene');
+    await updateAssignment('Completed');
+
+    final finalEmergency = await citizen.get('/emergency/$emergencyId');
+    expect(finalEmergency.statusCode, 200);
+    expect(finalEmergency.data['status'], 'Completed');
   });
 }
