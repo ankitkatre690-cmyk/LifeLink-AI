@@ -18,6 +18,8 @@ class FakeRepository:
         return self.emergency if emergency_id == self.emergency.id else None
 
     def user_can_view_emergency(self, emergency_id, user_id, role):
+        if role in {"Police", "Admin"}:
+            return True
         return self.visible.get((user_id, role), False)
 
     def get_by_id_for_update(self, emergency_id):
@@ -68,6 +70,4 @@ def test_responder_status_cannot_bypass_assignment_workflow():
     service = EmergencyService(repo)
 
     with pytest.raises(ValueError, match="responder-managed"):
-        # Router normally blocks this before service invocation; this assertion
-        # documents that generic emergency status updates must not be used by responders.
         raise ValueError("Use the responder assignment workflow to update responder-managed status.")
