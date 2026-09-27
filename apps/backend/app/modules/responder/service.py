@@ -168,21 +168,22 @@ class ResponderService:
         expected_emergency_status = EMERGENCY_STATUS_BY_ASSIGNMENT.get(previous_status)
         if expected_emergency_status is not None and emergency.status != expected_emergency_status:
             raise ValueError("Emergency status is out of sync with the responder assignment.")
+        dispatch = self.repository.get_dispatch_by_assignment_id(assignment.id)
+        dispatch_is_terminal = dispatch is not None and dispatch.dispatch_status in {"Completed", "Cancelled"}
         assignment.status = status
         if notes is not None:
             assignment.notes = notes
         emergency_status = EMERGENCY_STATUS_BY_ASSIGNMENT.get(status)
         if emergency_status is not None:
             emergency.status = emergency_status
-        dispatch = self.repository.get_dispatch_by_assignment_id(assignment.id)
         if status in {"Completed", "Cancelled"}:
             profile.status = "Available"
-            if previous_status not in {"Completed", "Cancelled"} and dispatch is not None and dispatch.resource_id is not None:
+            if previous_status not in {"Completed", "Cancelled"} and not dispatch_is_terminal and dispatch is not None and dispatch.resource_id is not None:
                 resource = self.repository.get_hospital_resource(dispatch.resource_id)
                 if resource is not None:
                     resource.available_count = min(resource.total_count, resource.available_count + 1)
                     resource.is_available = resource.available_count > 0
-        if dispatch is not None:
+        if dispatch is not None and not dispatch_is_terminal:
             dispatch.dispatch_status = status
         self.repository.update_profile()
         return assignment
