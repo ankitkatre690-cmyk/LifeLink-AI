@@ -41,6 +41,7 @@ class FakeResponderRepository:
             (),
             {"id": uuid.uuid4(), "status": profile_status},
         )()
+        self.active_assignment = None
 
     def get_profile_by_user_id(self, user_id):
         return self.profile
@@ -52,6 +53,15 @@ class FakeResponderRepository:
         return self.emergency
 
     def get_assignment_for_emergency_and_responder(self, emergency_id, responder_id):
+        return None
+
+    def get_active_assignment_for_emergency(self, emergency_id):
+        return self.active_assignment
+
+    def get_active_assignment_for_responder(self, responder_id):
+        return None
+
+    def update_profile(self):
         return None
 
 
@@ -124,21 +134,20 @@ class FakeDispatch:
 
 
 class FakeAssignment:
-    def __init__(self, status="OnScene"):
+    def __init__(self, status="OnScene", responder_id=None):
         self.id = uuid.uuid4()
         self.status = status
-        self.responder_id = uuid.uuid4()
+        self.responder_id = responder_id or uuid.uuid4()
 
 
 class FakeCompletionRepository:
     def __init__(self, resource, emergency_status="OnScene", assignment_status="OnScene"):
-
         self.profile = type(
             "Profile",
             (),
             {"id": uuid.uuid4(), "status": "Busy"},
         )()
-        self.assignment = FakeAssignment(status=assignment_status)
+        self.assignment = FakeAssignment(status=assignment_status, responder_id=self.profile.id)
         self.emergency = FakeEmergency(emergency_status)
         self.resource = resource
         self.dispatch = FakeDispatch(uuid.uuid4())
@@ -171,23 +180,13 @@ def test_terminal_assignment_releases_hospital_resource_once(terminal_status):
     repository = FakeCompletionRepository(resource)
     service = ResponderService(repository)
 
-    service.update_assignment(
-        FakeUser(),
-        repository.assignment.id,
-        terminal_status,
-        None,
-    )
+    service.update_assignment(FakeUser(), repository.assignment.id, terminal_status, None)
 
     assert repository.profile.status == "Available"
     assert resource.available_count == 1
     assert resource.is_available is True
 
-    service.update_assignment(
-        FakeUser(),
-        repository.assignment.id,
-        terminal_status,
-        None,
-    )
+    service.update_assignment(FakeUser(), repository.assignment.id, terminal_status, None)
 
     assert resource.available_count == 1
     assert repository.dispatch.dispatch_status == terminal_status
@@ -203,25 +202,12 @@ def test_terminal_assignment_releases_hospital_resource_once(terminal_status):
         ("OnScene", "OnScene", "Cancelled"),
     ],
 )
-def test_assignment_status_synchronizes_emergency_status(
-    previous_assignment_status,
-    previous_emergency_status,
-    assignment_status,
-):
+def test_assignment_status_synchronizes_emergency_status(previous_assignment_status, previous_emergency_status, assignment_status):
     resource = FakeResource(available_count=0, total_count=1)
-    repository = FakeCompletionRepository(
-        resource,
-        emergency_status=previous_emergency_status,
-        assignment_status=previous_assignment_status,
-    )
+    repository = FakeCompletionRepository(resource, emergency_status=previous_emergency_status, assignment_status=previous_assignment_status)
     service = ResponderService(repository)
 
-    service.update_assignment(
-        FakeUser(),
-        repository.assignment.id,
-        assignment_status,
-        None,
-    )
+    service.update_assignment(FakeUser(), repository.assignment.id, assignment_status, None)
 
     assert repository.emergency.status == assignment_status
     assert repository.dispatch.dispatch_status == assignment_status
@@ -230,19 +216,12 @@ def test_assignment_status_synchronizes_emergency_status(
 def test_responder_assignment_rejects_existing_active_assignment():
     emergency = FakeEmergency("Pending")
     repository = FakeResponderRepository(emergency)
-    repository.get_active_assignment_for_emergency = lambda emergency_id: FakeAssignment(
-        status="Assigned"
-    )
+    repository.active_assignment = FakeAssignment(status="Assigned")
 
     with pytest.raises(AssignmentAlreadyExists):
         ResponderService(repository).create_assignment(
             FakeUser(),
-            type("Request", (), {
-                "emergency_id": emergency.id,
-                "distance_km": 1.0,
-                "eta_minutes": 2,
-                "notes": None,
-            })(),
+            type("Request", (), {"emergency_id": emergency.id, "distance_km": 1.0, "eta_minutes": 2, "notes": None})(),
         )
 
 
@@ -260,78 +239,30 @@ def test_dispatch_repository_guard_is_checked_before_responder_selection():
 
 class FailingDispatchRepository:
     def __init__(self):
-        self.emergency = type(
-            "Emergency",
-            (),
-            {
-                "id": uuid.uuid4(),
-                "status": "Pending",
-                "latitude": 21.0,
-                "longitude": 79.0,
-            },
-        )()
-        self.responder = type(
-            "Responder",
-            (),
-            {
-                "id": uuid.uuid4(),
-                "status": "Available",
-                "latitude": 21.1,
-                "longitude": 79.1,
-            },
-        )()
-        self.resource = type(
-            "Resource",
-            (),
-            {"id": uuid.uuid4(), "available_count": 1, "is_available": True},
-        )()
+        self.emergency = type("Emergency", (), {"id": uuid.uuid4(), "status": "Pending", "latitude": 21.0, "longitude": 79.0})()
+        self.responder = type("Responder", (), {"id": uuid.uuid4(), "status": "Available", "latitude": 21.1, "longitude": 79.1})()
+        self.resource = type("Resource", (), {"id": uuid.uuid4(), "available_count": 1, "is_available": True})()
         self.hospital = type("Hospital", (), {"id": uuid.uuid4()})()
         self.rollback_called = False
 
-    def get_emergency(self, emergency_id):
-        return self.emergency
-
-    def get_emergency_for_update(self, emergency_id):
-        return self.emergency
-
-    def get_dispatch_for_emergency(self, emergency_id):
-        return None
-
-    def get_active_assignment_for_emergency(self, emergency_id):
-        return None
-
-    def get_available_responders(self):
-        return [self.responder]
-
-    def get_available_hospital_resource(self):
-        return self.resource, self.hospital
-
-    def create_assignment(self, assignment):
-        assignment.id = uuid.uuid4()
-        return assignment
-
-    def create_dispatch(self, dispatch):
-        raise RuntimeError("dispatch persistence failed")
-
-    def create_log(self, log):
-        return log
-
-    def commit(self):
-        raise AssertionError("commit must not be reached")
-
-    def rollback(self):
-        self.rollback_called = True
-
-    def refresh(self, entity):
-        return None
+    def get_emergency(self, emergency_id): return self.emergency
+    def get_emergency_for_update(self, emergency_id): return self.emergency
+    def get_dispatch_for_emergency(self, emergency_id): return None
+    def get_active_assignment_for_emergency(self, emergency_id): return None
+    def get_available_responders(self): return [self.responder]
+    def get_available_hospital_resource(self): return self.resource, self.hospital
+    def create_assignment(self, assignment): assignment.id = uuid.uuid4(); return assignment
+    def create_dispatch(self, dispatch): raise RuntimeError("dispatch persistence failed")
+    def create_log(self, log): return log
+    def commit(self): raise AssertionError("commit must not be reached")
+    def rollback(self): self.rollback_called = True
+    def refresh(self, entity): return None
 
 
 def test_dispatch_rolls_back_when_late_persistence_fails():
     repository = FailingDispatchRepository()
-
     with pytest.raises(RuntimeError, match="dispatch persistence failed"):
         DispatchService(repository).dispatch_emergency(repository.emergency.id)
-
     assert repository.rollback_called is True
 
 
@@ -346,10 +277,8 @@ def test_dispatch_never_decrements_an_exhausted_resource():
             return self.resource, self.hospital
 
     repository = ExhaustedRepository()
-
     with pytest.raises(NoAvailableHospitalResource):
         DispatchService(repository).dispatch_emergency(repository.emergency.id)
-
     assert repository.resource.available_count == 0
 
 
@@ -368,22 +297,9 @@ def test_terminal_assignment_release_is_guarded_by_previous_status():
     resource = FakeResource(available_count=0, total_count=1)
     repository = FakeCompletionRepository(resource)
     service = ResponderService(repository)
-
-    service.update_assignment(
-        FakeUser(),
-        repository.assignment.id,
-        "Completed",
-        None,
-    )
+    service.update_assignment(FakeUser(), repository.assignment.id, "Completed", None)
     assert resource.available_count == 1
-
-    # A repeated terminal transition must not reserve/release inventory again.
-    service.update_assignment(
-        FakeUser(),
-        repository.assignment.id,
-        "Completed",
-        None,
-    )
+    service.update_assignment(FakeUser(), repository.assignment.id, "Completed", None)
     assert resource.available_count == 1
     assert repository.dispatch.dispatch_status == "Completed"
 
@@ -392,13 +308,10 @@ def test_terminal_assignment_release_is_guarded_by_previous_status():
 def test_responder_cannot_leave_active_assignment_state(status):
     emergency = FakeEmergency("Assigned")
     repository = FakeResponderRepository(emergency, profile_status="Busy")
-    repository.get_active_assignment_for_responder = lambda responder_id: FakeAssignment(
-        status="Assigned"
-    )
+    repository.get_active_assignment_for_responder = lambda responder_id: FakeAssignment(status="Assigned")
 
     with pytest.raises(ValueError, match="active assignment exists"):
         ResponderService(repository).update_status(FakeUser(), status)
-
     assert repository.profile.status == "Busy"
 
 
@@ -406,21 +319,15 @@ def test_responder_can_become_available_without_active_assignment():
     emergency = FakeEmergency("Pending")
     repository = FakeResponderRepository(emergency, profile_status="Busy")
     repository.get_active_assignment_for_responder = lambda responder_id: None
-
     profile = ResponderService(repository).update_status(FakeUser(), "Available")
-
     assert profile.status == "Available"
 
 
 def test_responder_can_remain_busy_with_active_assignment():
     emergency = FakeEmergency("Assigned")
     repository = FakeResponderRepository(emergency, profile_status="Busy")
-    repository.get_active_assignment_for_responder = lambda responder_id: FakeAssignment(
-        status="Assigned"
-    )
-
+    repository.get_active_assignment_for_responder = lambda responder_id: FakeAssignment(status="Assigned")
     profile = ResponderService(repository).update_status(FakeUser(), "Busy")
-
     assert profile.status == "Busy"
 
 
@@ -428,15 +335,8 @@ def test_assignment_update_rejects_out_of_sync_terminal_emergency():
     resource = FakeResource(available_count=0, total_count=1)
     repository = FakeCompletionRepository(resource, emergency_status="Cancelled")
     previous_status = repository.assignment.status
-
     with pytest.raises(ValueError, match="out of sync"):
-        ResponderService(repository).update_assignment(
-            FakeUser(),
-            repository.assignment.id,
-            "Completed",
-            None,
-        )
-
+        ResponderService(repository).update_assignment(FakeUser(), repository.assignment.id, "Completed", None)
     assert repository.assignment.status == previous_status
     assert repository.emergency.status == "Cancelled"
     assert repository.profile.status == "Busy"
@@ -448,43 +348,25 @@ class FakeEmergencyStatusRepository:
         self.emergency = emergency
         self.active_assignment = active_assignment
         self.updated = False
+        self.committed = False
+        self.rolled_back = False
 
-    def get_by_id(self, emergency_id):
-        return self.emergency
-
-    def get_by_id_for_update(self, emergency_id):
-        return self.emergency
-
-    def get_active_assignment_for_emergency(self, emergency_id):
-        return self.active_assignment
-
-    def update(self):
-        self.updated = True
-
-    def create_update(self, update):
-        return update
+    def get_by_id(self, emergency_id): return self.emergency
+    def get_by_id_for_update(self, emergency_id): return self.emergency
+    def get_active_assignment_for_emergency(self, emergency_id): return self.active_assignment
+    def update(self): self.updated = True
+    def create_update(self, update): return update
+    def commit(self): self.committed = True
+    def refresh(self, entity): return entity
+    def rollback(self): self.rolled_back = True
 
 
 def test_generic_emergency_cancellation_rejects_active_assignment():
     emergency = FakeEmergency("Assigned")
-    repository = FakeEmergencyStatusRepository(
-        emergency,
-        active_assignment=FakeAssignment(status="Assigned"),
-    )
-    request = type(
-        "Request",
-        (),
-        {"status": "Cancelled", "remarks": "Police cancellation"},
-    )()
-
+    repository = FakeEmergencyStatusRepository(emergency, active_assignment=FakeAssignment(status="Assigned"))
+    request = type("Request", (), {"status": "Cancelled", "remarks": "Police cancellation"})()
     with pytest.raises(ValueError, match="active responder assignment exists"):
-        EmergencyService(repository).update_status(
-            emergency.id,
-            uuid.uuid4(),
-            request,
-            actor_role="Police",
-        )
-
+        EmergencyService(repository).update_status(emergency.id, uuid.uuid4(), request, actor_role="Police")
     assert emergency.status == "Assigned"
     assert repository.updated is False
 
@@ -492,19 +374,8 @@ def test_generic_emergency_cancellation_rejects_active_assignment():
 def test_generic_emergency_cancellation_allows_no_active_assignment():
     emergency = FakeEmergency("Assigned")
     repository = FakeEmergencyStatusRepository(emergency)
-    request = type(
-        "Request",
-        (),
-        {"status": "Cancelled", "remarks": "Citizen cancellation"},
-    )()
-
-    result = EmergencyService(repository).update_status(
-        emergency.id,
-        uuid.uuid4(),
-        request,
-        actor_role="Citizen",
-    )
-
+    request = type("Request", (), {"status": "Cancelled", "remarks": "Citizen cancellation"})()
+    result = EmergencyService(repository).update_status(emergency.id, uuid.uuid4(), request, actor_role="Citizen")
     assert result.status == "Cancelled"
     assert repository.updated is True
 
@@ -513,14 +384,7 @@ def test_terminal_assignment_does_not_release_already_closed_dispatch():
     resource = FakeResource(available_count=1, total_count=1)
     repository = FakeCompletionRepository(resource)
     repository.dispatch.dispatch_status = "Cancelled"
-
-    ResponderService(repository).update_assignment(
-        FakeUser(),
-        repository.assignment.id,
-        "Completed",
-        None,
-    )
-
+    ResponderService(repository).update_assignment(FakeUser(), repository.assignment.id, "Completed", None)
     assert resource.available_count == 1
     assert repository.dispatch.dispatch_status == "Cancelled"
 
@@ -530,55 +394,29 @@ class FakeEmergencyAccessRepository:
         self.emergency = emergency
         self.allowed = allowed
 
-    def get_by_id(self, emergency_id):
-        return self.emergency
-
-    def user_can_view_emergency(self, emergency_id, user_id, role):
-        return self.allowed
+    def get_by_id(self, emergency_id): return self.emergency
+    def user_can_view_emergency(self, emergency_id, user_id, role): return self.allowed
 
 
 @pytest.mark.parametrize(
     ("role", "allowed"),
-    [
-        ("Citizen", True),
-        ("Citizen", False),
-        ("Responder", True),
-        ("Responder", False),
-        ("Police", True),
-        ("Admin", True),
-    ],
+    [("Citizen", True), ("Citizen", False), ("Responder", True), ("Responder", False), ("Police", True), ("Admin", True)],
 )
 def test_emergency_object_access_is_enforced(role, allowed):
     emergency = FakeEmergency("Pending")
     repository = FakeEmergencyAccessRepository(emergency, allowed)
     service = EmergencyService(repository)
-
     if allowed:
-        assert service.get_emergency_for_user(
-            emergency.id,
-            uuid.uuid4(),
-            role,
-        ) is emergency
+        assert service.get_emergency_for_user(emergency.id, uuid.uuid4(), role) is emergency
     else:
         with pytest.raises(PermissionError, match="not authorized"):
-            service.get_emergency_for_user(
-                emergency.id,
-                uuid.uuid4(),
-                role,
-            )
+            service.get_emergency_for_user(emergency.id, uuid.uuid4(), role)
 
 
 def test_emergency_object_access_raises_not_found_before_authorization():
     class MissingRepository(FakeEmergencyAccessRepository):
-        def get_by_id(self, emergency_id):
-            return None
+        def get_by_id(self, emergency_id): return None
 
     repository = MissingRepository(None, False)
-
-    with pytest.raises(EmergencyNotFound) as exc_info:
-        EmergencyService(repository).get_emergency_for_user(
-            uuid.uuid4(),
-            uuid.uuid4(),
-            "Citizen",
-        )
-
+    with pytest.raises(EmergencyNotFound):
+        EmergencyService(repository).get_emergency_for_user(uuid.uuid4(), uuid.uuid4(), "Citizen")
