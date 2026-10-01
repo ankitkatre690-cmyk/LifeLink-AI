@@ -172,6 +172,16 @@ def test_citizen_api_smoke_flow(client):
             headers=headers,
         )
         step("delete_device_token", response, 204)
+
+        response = client.post(
+            "/api/v1/notifications/device-tokens",
+            json={"token": device_token, "platform": "ios"},
+            headers=headers,
+        )
+        step("register_device_token", response, 200)
+        assert response.json()["id"] == token_id
+        assert response.json()["platform"] == "ios"
+        assert response.json()["is_active"] is True
     finally:
         if user_id is not None:
             db = SessionLocal()
