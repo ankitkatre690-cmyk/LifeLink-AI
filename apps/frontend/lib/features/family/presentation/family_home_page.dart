@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/realtime/realtime_client.dart';
 import '../../../core/storage/secure_storage.dart';
 import '../data/family_api.dart';
