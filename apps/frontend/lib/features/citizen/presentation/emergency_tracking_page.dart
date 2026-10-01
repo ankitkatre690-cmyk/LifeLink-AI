@@ -32,6 +32,7 @@ class _EmergencyTrackingPageState
   double? _emergencyLatitude;
   double? _emergencyLongitude;
   bool _connected = false;
+  DateTime? _lastRealtimeEventAt;
   final List<String> _updates = <String>[];
   List<Map<String, dynamic>> _timeline = <Map<String, dynamic>>[];
   bool _timelineLoading = true;
@@ -320,6 +321,9 @@ class _EmergencyTrackingPageState
     setState(() {
       if (event.event == 'connected') {
         _connected = true;
+        _lastRealtimeEventAt = DateTime.now();
+      } else {
+        _lastRealtimeEventAt = DateTime.now();
       }
 
       final nextStatus = event.data['status']?.toString();
@@ -347,6 +351,15 @@ class _EmergencyTrackingPageState
         }
       }
     });
+  }
+
+  String get _realtimeStatusLabel {
+    if (_connected) return 'Live updates connected';
+    final lastEvent = _lastRealtimeEventAt;
+    if (lastEvent == null) return 'Connecting to live updates…';
+    final age = DateTime.now().difference(lastEvent);
+    if (age.inSeconds < 30) return 'Reconnecting to live updates…';
+    return 'Live updates unavailable';
   }
 
   String _eventMessage(String eventType) {
@@ -390,11 +403,7 @@ class _EmergencyTrackingPageState
                 leading: Icon(
                   _connected ? Icons.wifi : Icons.wifi_off,
                 ),
-                title: Text(
-                  _connected
-                      ? 'Live connection'
-                      : 'Waiting for connection...',
-                ),
+                title: Text(_realtimeStatusLabel),
                 subtitle: Text(_message),
               ),
             ),
