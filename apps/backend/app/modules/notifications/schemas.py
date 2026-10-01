@@ -20,3 +20,18 @@ class NotificationResponse(BaseModel):
 
 class NotificationReadUpdate(BaseModel):
     is_read: bool = True
+
+
+class DeviceTokenCreate(BaseModel):
+    token: str
+    platform: str
+
+
+class DeviceTokenResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    token: str
+    platform: str
+    is_active: bool
