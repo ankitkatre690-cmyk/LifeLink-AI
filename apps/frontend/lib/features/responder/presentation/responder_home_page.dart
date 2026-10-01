@@ -104,11 +104,15 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (status == null) return;
     try {
       _profile = await ref.read(responderApiProvider).updateStatus(status);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to update responder status.');
+      if (mounted) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to update responder status.');
+      }
     }
   }
 
@@ -117,7 +121,9 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (id == null || id.isEmpty) return;
     try {
       _assignment = await ref.read(responderApiProvider).getAssignment(id);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on DioException catch (error) {
       if (mounted) setState(() => _error = error.response?.data is Map
           ? error.response?.data['detail']?.toString()
@@ -144,11 +150,15 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (status == null) return;
     try {
       _assignment = await ref.read(responderApiProvider).updateAssignment(id, status);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to update assignment.');
+      if (mounted) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to update assignment.');
+      }
     }
   }
 
