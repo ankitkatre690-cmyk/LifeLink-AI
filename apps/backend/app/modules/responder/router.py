@@ -165,6 +165,22 @@ def create_assignment(
 
 
 @router.get(
+    "/assignments/active",
+    response_model=AssignmentResponse | None,
+)
+def get_active_assignment(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("Responder")),
+):
+    try:
+        return _service(db).get_active_assignment(current_user)
+    except InvalidResponderRole:
+        raise HTTPException(403, "Current user does not have Responder role.")
+    except ResponderProfileNotFound:
+        raise HTTPException(404, "Responder profile not found.")
+
+
+@router.get(
     "/assignments/{assignment_id}",
     response_model=AssignmentResponse,
 )
