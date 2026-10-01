@@ -40,6 +40,41 @@ class _EmergencyTrackingPageState
   String? _responderAssignmentStatus;
   DateTime? _responderLocationUpdatedAt;
 
+  LatLng? get _mapCenter {
+    if (_emergencyLatitude != null &&
+        _emergencyLongitude != null &&
+        _responderLatitude != null &&
+        _responderLongitude != null) {
+      return LatLng(
+        (_emergencyLatitude! + _responderLatitude!) / 2,
+        (_emergencyLongitude! + _responderLongitude!) / 2,
+      );
+    }
+    if (_responderLatitude != null && _responderLongitude != null) {
+      return LatLng(_responderLatitude!, _responderLongitude!);
+    }
+    if (_emergencyLatitude != null && _emergencyLongitude != null) {
+      return LatLng(_emergencyLatitude!, _emergencyLongitude!);
+    }
+    return null;
+  }
+
+  double _mapZoomForDistance(double distanceKm) {
+    if (distanceKm <= 0.5) return 15;
+    if (distanceKm <= 1) return 14;
+    if (distanceKm <= 3) return 13;
+    if (distanceKm <= 7) return 12;
+    if (distanceKm <= 15) return 11;
+    if (distanceKm <= 30) return 10;
+    if (distanceKm <= 60) return 9;
+    return 8;
+  }
+
+  double get _mapZoom {
+    final distance = _responderDistanceKm;
+    return distance == null ? 15 : _mapZoomForDistance(distance);
+  }
+
   double? get _responderDistanceKm {
     if (_emergencyLatitude == null ||
         _emergencyLongitude == null ||
@@ -285,11 +320,8 @@ class _EmergencyTrackingPageState
                       height: 220,
                       child: FlutterMap(
                         options: MapOptions(
-                          initialCenter: LatLng(
-                            _responderLatitude!,
-                            _responderLongitude!,
-                          ),
-                          initialZoom: 13,
+                          initialCenter: _mapCenter!,
+                          initialZoom: _mapZoom,
                         ),
                         children: [
                           TileLayer(
