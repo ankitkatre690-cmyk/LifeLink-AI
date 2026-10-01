@@ -39,6 +39,44 @@ class _EmergencyTrackingPageState
   double? _responderLatitude;
   double? _responderLongitude;
   String? _responderAssignmentStatus;
+
+  String get _trackingHeadline {
+    switch (_responderAssignmentStatus) {
+      case 'Assigned':
+        return 'Responder assigned';
+      case 'Accepted':
+        return 'Responder accepted';
+      case 'EnRoute':
+        return 'Responder is on the way';
+      case 'OnScene':
+        return 'Responder is on scene';
+      case 'Completed':
+        return 'Response completed';
+      case 'Cancelled':
+        return 'Responder assignment cancelled';
+      default:
+        return 'Waiting for responder';
+    }
+  }
+
+  IconData get _trackingIcon {
+    switch (_responderAssignmentStatus) {
+      case 'OnScene':
+        return Icons.location_on;
+      case 'Completed':
+        return Icons.check_circle_outline;
+      case 'Cancelled':
+        return Icons.cancel_outlined;
+      case 'EnRoute':
+        return Icons.directions_car;
+      case 'Accepted':
+        return Icons.thumb_up_alt_outlined;
+      case 'Assigned':
+        return Icons.assignment_turned_in_outlined;
+      default:
+        return Icons.hourglass_top;
+    }
+  }
   DateTime? _responderLocationUpdatedAt;
   double? _displayedResponderLatitude;
   double? _displayedResponderLongitude;
@@ -352,6 +390,18 @@ class _EmergencyTrackingPageState
                 subtitle: Text(_status),
               ),
             ),
+            if (_responderAssignmentStatus != null) ...[
+              Card(
+                child: ListTile(
+                  leading: Icon(_trackingIcon),
+                  title: Text(_trackingHeadline),
+                  subtitle: Text(
+                    _responderAssignmentStatus!,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             if (_responderLatitude != null && _responderLongitude != null) ...[
               const SizedBox(height: 16),
               Card(
