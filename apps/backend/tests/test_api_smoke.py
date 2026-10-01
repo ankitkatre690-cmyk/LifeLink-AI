@@ -41,6 +41,8 @@ def test_citizen_api_smoke_flow(client):
         "get_emergency",
         "cancel_emergency",
         "timeline",
+        "register_device_token",
+        "delete_device_token",
     ]
 
     def step(name: str, response, expected: int) -> None:
@@ -152,6 +154,24 @@ def test_citizen_api_smoke_flow(client):
         step("timeline", response, 200)
         assert isinstance(response.json(), list)
         assert any(item["status"] == "Cancelled" for item in response.json())
+
+        device_token = f"smoke-token-{uuid.uuid4()}"
+        response = client.post(
+            "/api/v1/notifications/device-tokens",
+            json={"token": device_token, "platform": "android"},
+            headers=headers,
+        )
+        step("register_device_token", response, 200)
+        token_id = response.json()["id"]
+        assert response.json()["user_id"] == user_id
+        assert response.json()["token"] == device_token
+        assert response.json()["is_active"] is True
+
+        response = client.delete(
+            f"/api/v1/notifications/device-tokens/{token_id}",
+            headers=headers,
+        )
+        step("delete_device_token", response, 204)
     finally:
         if user_id is not None:
             db = SessionLocal()
