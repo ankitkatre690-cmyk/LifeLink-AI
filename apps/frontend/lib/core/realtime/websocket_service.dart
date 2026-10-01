@@ -36,6 +36,7 @@ class WebSocketService {
   final _eventsController = StreamController<RealtimeEvent>.broadcast();
 
   Stream<RealtimeEvent> get events => _eventsController.stream;
+  bool get isConnected => _channel != null;
 
   void connect(String token) {
     disconnect();
