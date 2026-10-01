@@ -126,7 +126,9 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
 
   Future<void> _updateAssignment() async {
     final id = _assignment?['id']?.toString();
-    if (id == null) return;
+    if (id == null) {
+      return;
+    }
     final status = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
