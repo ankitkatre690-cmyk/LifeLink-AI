@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/realtime/realtime_client.dart';
-import '../../../core/storage/secure_storage.dart';
+import '../../../core/realtime/realtime_provider.dart';
+import '../../../core/realtime/websocket_service.dart';
 import '../data/hospital_api.dart';
 
 final hospitalApiProvider = Provider<HospitalApi>((ref) => HospitalApi(ref.watch(apiClientProvider)));
@@ -22,8 +22,7 @@ class _HospitalHomePageState extends ConsumerState<HospitalHomePage> {
   String? _error;
   Map<String, dynamic>? _profile;
   List<Map<String, dynamic>> _resources = [];
-  RealtimeClient? _realtime;
-  StreamSubscription<Map<String, dynamic>>? _subscription;
+  StreamSubscription<RealtimeEvent>? _subscription;
   final List<String> _incoming = <String>[];
   bool _connected = false;
 
@@ -46,21 +45,26 @@ class _HospitalHomePageState extends ConsumerState<HospitalHomePage> {
   }
 
   Future<void> _connectRealtime() async {
-    final token = await const SecureStorage().readAccessToken();
-    if (!mounted || token == null || token.isEmpty) return;
-    final client = RealtimeClient(baseUrl: ref.read(apiClientProvider).dio.options.baseUrl, accessToken: token);
-    _realtime = client;
-    client.connect();
-    _subscription = client.events.listen((event) {
+    final service = ref.read(realtimeServiceProvider);
+    if (!mounted) return;
+    setState(() => _connected = service.isConnected);
+    _subscription = service.events.listen((event) {
       if (!mounted) return;
-      final eventType = event['event']?.toString() ?? '';
+      final eventType = event.event;
       if (eventType == 'connected') {
         setState(() => _connected = true);
         return;
       }
       if (eventType != 'dispatch.hospital_incoming') return;
-      final data = event['data']; if (data is! Map) return;
-      setState(() { _connected = true; _incoming.insert(0, 'Incoming emergency: ${data['emergency_id'] ?? 'Unknown'}'); if (_incoming.length > 5) _incoming.removeLast(); });
+      final data = event.data;
+      setState(() {
+        _connected = true;
+        _incoming.insert(
+          0,
+          'Incoming emergency: ${data['emergency_id'] ?? 'Unknown'}',
+        );
+        if (_incoming.length > 5) _incoming.removeLast();
+      });
     });
   }
 
@@ -84,7 +88,7 @@ class _HospitalHomePageState extends ConsumerState<HospitalHomePage> {
   }
 
   @override
-  void dispose() { _subscription?.cancel(); _realtime?.dispose(); super.dispose(); }
+  void dispose() { _subscription?.cancel(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
