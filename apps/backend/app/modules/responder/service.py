@@ -136,6 +136,13 @@ class ResponderService:
         profile.status = "Busy"
         return self.repository.create_assignment(assignment)
 
+    def get_active_assignment(self, user):
+        self._ensure_responder_role(user)
+        profile = self.repository.get_profile_by_user_id(user.id)
+        if profile is None:
+            raise ResponderProfileNotFound()
+        return self.repository.get_active_assignment_for_responder_profile(profile.id)
+
     def get_assignment(self, user, assignment_id: uuid.UUID):
         self._ensure_responder_role(user)
         assignment = self.repository.get_assignment(assignment_id)
