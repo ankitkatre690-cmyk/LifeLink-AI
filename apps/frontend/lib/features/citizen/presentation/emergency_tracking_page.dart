@@ -26,6 +26,7 @@ class _EmergencyTrackingPageState
     extends ConsumerState<EmergencyTrackingPage> {
   late final EmergencyApi _emergencyApi;
   StreamSubscription<RealtimeEvent>? _subscription;
+  Timer? _responderAnimationTimer;
   String _status = 'Pending';
   String _message = 'Waiting for emergency response updates.';
   double? _emergencyLatitude;
@@ -39,6 +40,8 @@ class _EmergencyTrackingPageState
   double? _responderLongitude;
   String? _responderAssignmentStatus;
   DateTime? _responderLocationUpdatedAt;
+  double? _displayedResponderLatitude;
+  double? _displayedResponderLongitude;
 
   LatLng? get _mapCenter {
     if (_emergencyLatitude != null &&
@@ -216,6 +219,41 @@ class _EmergencyTrackingPageState
     }
   }
 
+  void _animateResponderTo(double latitude, double longitude) {
+    final startLatitude = _displayedResponderLatitude ?? latitude;
+    final startLongitude = _displayedResponderLongitude ?? longitude;
+    _responderAnimationTimer?.cancel();
+
+    const durationMs = 700;
+    const frameMs = 35;
+    var elapsedMs = 0;
+
+    void tick() {
+      elapsedMs += frameMs;
+      final progress = (elapsedMs / durationMs).clamp(0.0, 1.0);
+      final eased = 1 - math.pow(1 - progress, 3);
+
+      if (!mounted) return;
+      setState(() {
+        _displayedResponderLatitude =
+            startLatitude + (latitude - startLatitude) * eased;
+        _displayedResponderLongitude =
+            startLongitude + (longitude - startLongitude) * eased;
+      });
+
+      if (progress >= 1.0) {
+        _responderAnimationTimer?.cancel();
+        return;
+      }
+    }
+
+    tick();
+    _responderAnimationTimer = Timer.periodic(
+      const Duration(milliseconds: frameMs),
+      (_) => tick(),
+    );
+  }
+
   void _handleEvent(RealtimeEvent event) {
     final eventEmergencyId = event.data['emergency_id']?.toString();
     if (eventEmergencyId != null &&
@@ -235,8 +273,13 @@ class _EmergencyTrackingPageState
         _status = nextStatus;
       }
       if (event.event == 'responder.location_updated') {
-        _responderLatitude = (event.data['latitude'] as num?)?.toDouble();
-        _responderLongitude = (event.data['longitude'] as num?)?.toDouble();
+        final latitude = (event.data['latitude'] as num?)?.toDouble();
+        final longitude = (event.data['longitude'] as num?)?.toDouble();
+        _responderLatitude = latitude;
+        _responderLongitude = longitude;
+        if (latitude != null && longitude != null) {
+          _animateResponderTo(latitude, longitude);
+        }
         _responderAssignmentStatus = event.data['assignment_status']?.toString();
         _responderLocationUpdatedAt = DateTime.tryParse(event.timestamp ?? '');
       }
@@ -338,7 +381,10 @@ class _EmergencyTrackingPageState
                                   child: const Icon(Icons.emergency, size: 36),
                                 ),
                               Marker(
-                                point: LatLng(_responderLatitude!, _responderLongitude!),
+                                point: LatLng(
+                                  _displayedResponderLatitude ?? _responderLatitude!,
+                                  _displayedResponderLongitude ?? _responderLongitude!,
+                                ),
                                 width: 48,
                                 height: 48,
                                 child: const Icon(Icons.local_shipping, size: 36),
