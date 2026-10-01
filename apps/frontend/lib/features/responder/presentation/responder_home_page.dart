@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/realtime/realtime_client.dart';
-import '../../../core/storage/secure_storage.dart';
+import '../../../core/realtime/realtime_provider.dart';
+import '../../../core/realtime/websocket_service.dart';
 import '../data/responder_api.dart';
 
 final responderApiProvider = Provider<ResponderApi>(
@@ -27,8 +27,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _assignment;
   String? _assignmentId;
-  RealtimeClient? _realtime;
-  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
   bool _realtimeConnected = false;
 
   @override
@@ -56,20 +55,14 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   }
 
   Future<void> _connectRealtime() async {
-    final token = await const SecureStorage().readAccessToken();
-    if (!mounted || token == null || token.isEmpty) return;
-
-    final client = RealtimeClient(
-      baseUrl: ref.read(apiClientProvider).dio.options.baseUrl,
-      accessToken: token,
-    );
-    _realtime = client;
-    client.connect();
-    _realtimeSubscription = client.events.listen((event) {
+    final service = ref.read(realtimeServiceProvider);
+    if (!mounted) return;
+    setState(() => _realtimeConnected = service.isConnected);
+    _realtimeSubscription = service.events.listen((event) {
       if (!mounted) return;
-      final type = event['event']?.toString() ?? '';
-      final data = event['data'];
-      if (type != 'dispatch.assignment' || data is! Map) return;
+      final type = event.event;
+      final data = event.data;
+      if (type != 'dispatch.assignment') return;
       final assignmentId = data['assignment_id']?.toString();
       if (assignmentId == null || assignmentId.isEmpty) return;
 
@@ -190,7 +183,6 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   @override
   void dispose() {
     _realtimeSubscription?.cancel();
-    _realtime?.dispose();
     super.dispose();
   }
 
