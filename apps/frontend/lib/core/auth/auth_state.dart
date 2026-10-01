@@ -134,6 +134,7 @@ class AuthController extends Notifier<AuthState> {
   Future<void> logout() async {
     try {
       await ref.read(pushNotificationServiceProvider).unregisterCurrentToken();
+      await ref.read(pushNotificationServiceProvider).reset();
     } catch (_) {
       // Logout must succeed even if push cleanup is unavailable.
     }
