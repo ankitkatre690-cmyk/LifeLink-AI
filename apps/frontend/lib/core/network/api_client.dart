@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ApiClient {
   ApiClient({
@@ -26,3 +27,5 @@ class ApiClient {
     _dio.options.headers.remove('Authorization');
   }
 }
+
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
