@@ -18,6 +18,22 @@ class EmergencyApi {
         .toList();
   }
 
+  Future<Map<String, dynamic>> updateEmergencyStatus({
+    required String emergencyId,
+    required String status,
+    String? remarks,
+  }) async {
+    final response = await _client.dio.patch(
+      '/emergency/$emergencyId',
+      data: {
+        'status': status,
+        if (remarks != null && remarks.trim().isNotEmpty)
+          'remarks': remarks.trim(),
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<Map<String, dynamic>> createEmergency({
     required String emergencyType,
     required double latitude,
