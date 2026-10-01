@@ -27,6 +27,8 @@ class _EmergencyTrackingPageState
   StreamSubscription<RealtimeEvent>? _subscription;
   String _status = 'Pending';
   String _message = 'Waiting for emergency response updates.';
+  double? _emergencyLatitude;
+  double? _emergencyLongitude;
   bool _connected = false;
   final List<String> _updates = <String>[];
   List<Map<String, dynamic>> _timeline = <Map<String, dynamic>>[];
@@ -64,6 +66,8 @@ class _EmergencyTrackingPageState
       if (!mounted) return;
       final status = emergency['status']?.toString();
       if (status == null || status.isEmpty) return;
+      _emergencyLatitude = (emergency['latitude'] as num?)?.toDouble();
+      _emergencyLongitude = (emergency['longitude'] as num?)?.toDouble();
       setState(() {
         _status = status;
         _message = 'Emergency state synchronized with the server.';
@@ -246,8 +250,11 @@ class _EmergencyTrackingPageState
                       height: 220,
                       child: FlutterMap(
                         options: MapOptions(
-                          initialCenter: LatLng(_responderLatitude!, _responderLongitude!),
-                          initialZoom: 15,
+                          initialCenter: LatLng(
+                            _responderLatitude!,
+                            _responderLongitude!,
+                          ),
+                          initialZoom: 13,
                         ),
                         children: [
                           TileLayer(
@@ -256,6 +263,13 @@ class _EmergencyTrackingPageState
                           ),
                           MarkerLayer(
                             markers: [
+                              if (_emergencyLatitude != null && _emergencyLongitude != null)
+                                Marker(
+                                  point: LatLng(_emergencyLatitude!, _emergencyLongitude!),
+                                  width: 48,
+                                  height: 48,
+                                  child: const Icon(Icons.emergency, size: 36),
+                                ),
                               Marker(
                                 point: LatLng(_responderLatitude!, _responderLongitude!),
                                 width: 48,
@@ -266,6 +280,11 @@ class _EmergencyTrackingPageState
                           ),
                         ],
                       ),
+                    ),
+                    const ListTile(
+                      leading: Icon(Icons.emergency_outlined),
+                      title: Text('Emergency location'),
+                      subtitle: Text('Emergency origin'),
                     ),
                     ListTile(
                       leading: const Icon(Icons.location_on_outlined),
