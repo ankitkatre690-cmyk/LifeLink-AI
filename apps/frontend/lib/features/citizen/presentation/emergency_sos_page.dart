@@ -54,7 +54,7 @@ class _EmergencySosPageState extends ConsumerState<EmergencySosPage> {
 
     try {
       final position =
-          await const LocationService().getCurrentPosition();
+          await LocationService().getCurrentPosition();
       final emergency = await ref.read(emergencyApiProvider).createEmergency(
             emergencyType: 'GeneralSOS',
             latitude: position.latitude,
