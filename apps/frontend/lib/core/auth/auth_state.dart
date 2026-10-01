@@ -1,14 +1,10 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../network/api_client.dart';
 import '../notifications/push_notification_service.dart';
 import '../realtime/realtime_provider.dart';
 import '../storage/secure_storage.dart';
-
-final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
-
-final secureStorageProvider =
-    Provider<SecureStorage>((ref) => const SecureStorage());
 
 final authProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,
