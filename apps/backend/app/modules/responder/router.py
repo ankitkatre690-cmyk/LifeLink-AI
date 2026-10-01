@@ -123,17 +123,35 @@ def update_my_status(
     "/me/location",
     response_model=ResponderResponse,
 )
-def update_my_location(
+async def update_my_location(
     request: ResponderLocationUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_roles("Responder")),
 ):
     try:
-        return _service(db).update_location(
+        profile = _service(db).update_location(
             current_user,
             request.latitude,
             request.longitude,
         )
+        for assignment in ResponderRepository(db).get_active_assignments_for_responder(profile.id):
+            event = build_event("responder.location_updated", {
+                "assignment_id": str(assignment.id),
+                "emergency_id": str(assignment.emergency_id),
+                "responder_id": str(profile.id),
+                "latitude": profile.latitude,
+                "longitude": profile.longitude,
+                "assignment_status": assignment.status,
+            })
+            await connection_manager.send_to_user(
+                assignment.emergency.citizen_id,
+                event,
+            )
+            for user_id in FamilyRepository(db).get_member_user_ids_for_creator(
+                assignment.emergency.citizen_id
+            ):
+                await connection_manager.send_to_user(user_id, event)
+        return profile
     except InvalidResponderRole:
         raise HTTPException(403, "Current user does not have Responder role.")
     except ResponderProfileNotFound:
