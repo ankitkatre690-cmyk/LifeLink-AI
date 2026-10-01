@@ -11,6 +11,13 @@ class EmergencyApi {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  Future<List<Map<String, dynamic>>> getTimeline(String emergencyId) async {
+    final response = await _client.dio.get('/emergency/$emergencyId/timeline');
+    return (response.data as List)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
   Future<Map<String, dynamic>> createEmergency({
     required String emergencyType,
     required double latitude,
