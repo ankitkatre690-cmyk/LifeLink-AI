@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../data/emergency_api.dart';
 import '../../../core/network/api_client.dart';
@@ -33,6 +35,7 @@ class _EmergencyTrackingPageState
   double? _responderLatitude;
   double? _responderLongitude;
   String? _responderAssignmentStatus;
+  DateTime? _responderLocationUpdatedAt;
 
   bool get _isTerminal =>
       _status == 'Completed' || _status == 'Cancelled';
@@ -161,6 +164,7 @@ class _EmergencyTrackingPageState
         _responderLatitude = (event.data['latitude'] as num?)?.toDouble();
         _responderLongitude = (event.data['longitude'] as num?)?.toDouble();
         _responderAssignmentStatus = event.data['assignment_status']?.toString();
+        _responderLocationUpdatedAt = DateTime.tryParse(event.timestamp ?? '');
       }
 
       _message = _eventMessage(event.event);
@@ -234,14 +238,51 @@ class _EmergencyTrackingPageState
             if (_responderLatitude != null && _responderLongitude != null) ...[
               const SizedBox(height: 16),
               Card(
-                child: ListTile(
-                  leading: const Icon(Icons.location_on_outlined),
-                  title: const Text('Responder location'),
-                  subtitle: Text(
-                    '${_responderLatitude!.toStringAsFixed(5)}, '
-                    '${_responderLongitude!.toStringAsFixed(5)}'
-                    '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
-                  ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    SizedBox(
+                      height: 220,
+                      child: FlutterMap(
+                        options: MapOptions(
+                          initialCenter: LatLng(_responderLatitude!, _responderLongitude!),
+                          initialZoom: 15,
+                        ),
+                        children: [
+                          TileLayer(
+                            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                            userAgentPackageName: 'com.lifelink.ai',
+                          ),
+                          MarkerLayer(
+                            markers: [
+                              Marker(
+                                point: LatLng(_responderLatitude!, _responderLongitude!),
+                                width: 48,
+                                height: 48,
+                                child: const Icon(Icons.local_shipping, size: 36),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.location_on_outlined),
+                      title: const Text('Responder location'),
+                      subtitle: Text(
+                        '${_responderLatitude!.toStringAsFixed(5)}, '
+                        '${_responderLongitude!.toStringAsFixed(5)}'
+                        '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Text(
+                        'Map data is provided by OpenStreetMap. Location updates are delivered through LifeLink realtime events.',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
