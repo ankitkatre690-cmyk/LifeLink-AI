@@ -40,6 +40,22 @@ class _EmergencyTrackingPageState
   double? _responderLongitude;
   String? _responderAssignmentStatus;
 
+  String get _locationFreshnessLabel {
+    final updatedAt = _responderLocationUpdatedAt;
+    if (updatedAt == null) return 'Waiting for first GPS update';
+    final age = DateTime.now().difference(updatedAt.toLocal());
+    if (age.isNegative || age.inSeconds <= 15) return 'Location updated just now';
+    if (age.inMinutes < 2) return 'Location updated ${age.inSeconds}s ago';
+    if (age.inMinutes < 10) return 'Location updated ${age.inMinutes}m ago';
+    return 'Location may be stale (${age.inMinutes}m ago)';
+  }
+
+  bool get _locationIsStale {
+    final updatedAt = _responderLocationUpdatedAt;
+    if (updatedAt == null) return true;
+    return DateTime.now().difference(updatedAt.toLocal()).inMinutes >= 2;
+  }
+
   String get _trackingHeadline {
     switch (_responderAssignmentStatus) {
       case 'Assigned':
@@ -460,14 +476,21 @@ class _EmergencyTrackingPageState
                         ),
                       ),
                     ListTile(
-                      leading: const Icon(Icons.location_on_outlined),
+                      leading: Icon(
+                        _locationIsStale
+                            ? Icons.location_off_outlined
+                            : Icons.gps_fixed,
+                      ),
                       title: const Text('Responder location'),
                       subtitle: Text(
                         '${_responderLatitude!.toStringAsFixed(5)}, '
                         '${_responderLongitude!.toStringAsFixed(5)}'
-                        '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}'
-                        '${_responderLocationUpdatedAt == null ? '' : ' • Updated ${_responderLocationUpdatedAt!.toLocal().toString().substring(0, 19)}'}',
+                        '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
                       ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Text(_locationFreshnessLabel),
                     ),
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
