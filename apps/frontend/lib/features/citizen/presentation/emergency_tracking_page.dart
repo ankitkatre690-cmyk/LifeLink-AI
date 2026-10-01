@@ -27,12 +27,15 @@ class _EmergencyTrackingPageState
   String _message = 'Waiting for emergency response updates.';
   bool _connected = false;
   final List<String> _updates = <String>[];
+  List<Map<String, dynamic>> _timeline = <Map<String, dynamic>>[];
+  bool _timelineLoading = true;
 
   @override
   void initState() {
     super.initState();
     _emergencyApi = EmergencyApi(ref.read(apiClientProvider));
     _loadEmergency();
+    _loadTimeline();
     _subscription = ref.read(realtimeServiceProvider).events.listen(
       _handleEvent,
       onError: (_) {
@@ -60,6 +63,20 @@ class _EmergencyTrackingPageState
       setState(() {
         _message = 'Unable to synchronize emergency state. Live updates remain active.';
       });
+    }
+  }
+
+  Future<void> _loadTimeline() async {
+    try {
+      final timeline = await _emergencyApi.getTimeline(widget.emergencyId);
+      if (!mounted) return;
+      setState(() {
+        _timeline = timeline;
+        _timelineLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _timelineLoading = false);
     }
   }
 
@@ -150,13 +167,29 @@ class _EmergencyTrackingPageState
             ),
             const SizedBox(height: 16),
             const Text(
-              'Recent updates',
+              'Emergency timeline',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            if (_updates.isEmpty)
-              const Text('No response updates received yet.')
+            if (_timelineLoading)
+              const LinearProgressIndicator()
+            else if (_timeline.isEmpty)
+              const Text('No server timeline entries yet.')
             else
+              ..._timeline.map(
+                (item) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.history),
+                  title: Text(item['status']?.toString() ?? 'Status update'),
+                  subtitle: Text(item['remarks']?.toString() ?? ''),
+                ),
+              ),
+            if (_updates.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Live updates',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               ..._updates.map(
                 (update) => ListTile(
                   dense: true,
@@ -164,6 +197,7 @@ class _EmergencyTrackingPageState
                   title: Text(update),
                 ),
               ),
+            ],
             const SizedBox(height: 8),
             const Text(
               'This screen uses the shared LifeLink realtime service. '
