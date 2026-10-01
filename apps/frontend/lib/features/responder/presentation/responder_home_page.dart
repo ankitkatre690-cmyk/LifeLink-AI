@@ -118,9 +118,11 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
         setState(() {});
       }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to load assignment.');
+      if (mounted) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to load assignment.');
+      }
     }
   }
 
