@@ -61,3 +61,39 @@ class NotificationRepository:
 
     def commit(self):
         self.db.commit()
+
+
+    def get_device_token_for_user(self, token_id: uuid.UUID, user_id: uuid.UUID):
+        return (
+            self.db.query(DeviceToken)
+            .filter(
+                DeviceToken.id == token_id,
+                DeviceToken.user_id == user_id,
+            )
+            .first()
+        )
+
+    def get_device_token_by_value(self, user_id: uuid.UUID, token: str):
+        return (
+            self.db.query(DeviceToken)
+            .filter(
+                DeviceToken.user_id == user_id,
+                DeviceToken.token == token,
+            )
+            .first()
+        )
+
+    def create_device_token(self, device_token: DeviceToken):
+        self.db.add(device_token)
+        self.db.commit()
+        self.db.refresh(device_token)
+        return device_token
+
+    def save_device_token(self, device_token: DeviceToken):
+        self.db.commit()
+        self.db.refresh(device_token)
+        return device_token
+
+    def delete_device_token(self, device_token: DeviceToken):
+        self.db.delete(device_token)
+        self.db.commit()
