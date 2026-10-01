@@ -18,8 +18,9 @@ void main() {
       responderEmail.isNotEmpty &&
       responderPassword.isNotEmpty;
 
-  test('Citizen -> Police -> Responder emergency flow', () async {
-    if (!configured) return;
+  test(
+    'Citizen -> Police -> Responder emergency flow',
+    () async {
 
     Dio api(String token) => Dio(BaseOptions(
           baseUrl: '$baseUrl/api/v1',
@@ -73,5 +74,7 @@ void main() {
     final finalEmergency = await citizen.get('/emergency/$emergencyId');
     expect(finalEmergency.statusCode, 200);
     expect(finalEmergency.data['status'], 'Completed');
-  });
+    },
+    skip: !configured,
+  );
 }
