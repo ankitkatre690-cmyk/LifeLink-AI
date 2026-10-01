@@ -6,6 +6,11 @@ class EmergencyApi {
 
   final ApiClient _client;
 
+  Future<Map<String, dynamic>> getEmergency(String emergencyId) async {
+    final response = await _client.dio.get('/emergency/$emergencyId');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   Future<Map<String, dynamic>> createEmergency({
     required String emergencyType,
     required double latitude,
