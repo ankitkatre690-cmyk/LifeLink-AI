@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/auth_state.dart';
 import '../../features/auth/presentation/login_page.dart';
+import '../../features/citizen/presentation/emergency_sos_page.dart';
 import '../../features/citizen/presentation/emergency_tracking_page.dart';
 import '../../features/role/presentation/role_router_page.dart';
 
@@ -21,6 +22,10 @@ GoRouter buildAppRouter(AuthState auth) {
       GoRoute(
         path: '/home',
         builder: (context, state) => RoleRouterPage(role: auth.role ?? ''),
+      ),
+      GoRoute(
+        path: '/citizen/emergency-sos',
+        builder: (context, state) => const EmergencySosPage(),
       ),
       GoRoute(
         path: '/citizen/emergency/:emergencyId',
