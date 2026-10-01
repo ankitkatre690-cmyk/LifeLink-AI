@@ -29,6 +29,10 @@ class _EmergencyTrackingPageState
   final List<String> _updates = <String>[];
   List<Map<String, dynamic>> _timeline = <Map<String, dynamic>>[];
   bool _timelineLoading = true;
+  bool _cancelling = false;
+
+  bool get _isTerminal =>
+      _status == 'Completed' || _status == 'Cancelled';
 
   @override
   void initState() {
@@ -63,6 +67,58 @@ class _EmergencyTrackingPageState
       setState(() {
         _message = 'Unable to synchronize emergency state. Live updates remain active.';
       });
+    }
+  }
+
+  Future<void> _cancelEmergency() async {
+    if (_cancelling || _isTerminal) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel emergency?'),
+        content: const Text(
+          'Cancel this emergency only if you no longer need emergency assistance.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep emergency'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cancel emergency'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _cancelling = true);
+    try {
+      final emergency = await _emergencyApi.updateEmergencyStatus(
+        emergencyId: widget.emergencyId,
+        status: 'Cancelled',
+        remarks: 'Cancelled by citizen from emergency tracking.',
+      );
+      if (!mounted) return;
+      setState(() {
+        _status = emergency['status']?.toString() ?? 'Cancelled';
+        _message = 'Emergency cancelled successfully.';
+      });
+      await _loadTimeline();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'The emergency could not be cancelled. It may already have an active responder assignment.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _cancelling = false);
     }
   }
 
@@ -195,6 +251,42 @@ class _EmergencyTrackingPageState
                   dense: true,
                   leading: const Icon(Icons.circle, size: 8),
                   title: Text(update),
+                ),
+              ),
+            ],
+            const SizedBox(height: 8),
+            if (!_isTerminal) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _cancelling ? null : _cancelEmergency,
+                icon: _cancelling
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.cancel_outlined),
+                label: Text(
+                  _cancelling ? 'Cancelling…' : 'Cancel Emergency',
+                ),
+              ),
+            ] else ...[
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: Icon(
+                    _status == 'Completed'
+                        ? Icons.check_circle_outline
+                        : Icons.cancel_outlined,
+                  ),
+                  title: Text(
+                    _status == 'Completed'
+                        ? 'Emergency completed'
+                        : 'Emergency cancelled',
+                  ),
+                  subtitle: const Text(
+                    'No further emergency actions are available.',
+                  ),
                 ),
               ),
             ],
