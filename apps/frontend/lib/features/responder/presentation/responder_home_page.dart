@@ -43,6 +43,8 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     setState(() { _loading = true; _error = null; });
     try {
       _profile = await ref.read(responderApiProvider).getMyProfile();
+      _assignment = await ref.read(responderApiProvider).getActiveAssignment();
+      _assignmentId = _assignment?['id']?.toString();
     } on DioException catch (error) {
       if (mounted) {
         setState(() => _error = error.response?.data is Map
