@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/location/location_service.dart';
+
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/realtime/realtime_provider.dart';
@@ -29,6 +31,8 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   String? _assignmentId;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
   bool _realtimeConnected = false;
+  Timer? _locationTimer;
+  bool _locationUpdating = false;
 
   @override
   void initState() {
@@ -36,6 +40,8 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     Future.microtask(() async {
       await _load();
       await _connectRealtime();
+      await _updateLocation();
+      _startLocationUpdates();
     });
   }
 
@@ -53,6 +59,40 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _startLocationUpdates() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _updateLocation(),
+    );
+  }
+
+  Future<void> _updateLocation() async {
+    if (_locationUpdating) return;
+    _locationUpdating = true;
+    try {
+      final position = await LocationService().getCurrentPosition();
+      final updated = await ref.read(responderApiProvider).updateLocation(
+        position.latitude,
+        position.longitude,
+      );
+      if (!mounted) return;
+      setState(() => _profile = updated);
+    } on LocationException catch (error) {
+      if (mounted && _profile != null) {
+        setState(() => _error = error.message);
+      }
+    } on DioException catch (error) {
+      if (mounted && _profile != null) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to update responder location.');
+      }
+    } finally {
+      _locationUpdating = false;
     }
   }
 
@@ -207,6 +247,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
 
   @override
   void dispose() {
+    _locationTimer?.cancel();
     _realtimeSubscription?.cancel();
     super.dispose();
   }
