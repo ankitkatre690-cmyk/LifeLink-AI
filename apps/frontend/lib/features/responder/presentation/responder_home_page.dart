@@ -128,17 +128,36 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     }
   }
 
+  List<String> _nextAssignmentStatuses(String current) {
+    switch (current) {
+      case 'Assigned':
+        return const ['Accepted', 'Cancelled'];
+      case 'Accepted':
+        return const ['EnRoute', 'Cancelled'];
+      case 'EnRoute':
+        return const ['OnScene', 'Cancelled'];
+      case 'OnScene':
+        return const ['Completed', 'Cancelled'];
+      default:
+        return const [];
+    }
+  }
+
   Future<void> _updateAssignment() async {
     final id = _assignment?['id']?.toString();
     if (id == null) {
       return;
     }
+    final currentStatus = _assignment?['status']?.toString() ?? '';
+    final nextStatuses = _nextAssignmentStatuses(currentStatus);
+    if (nextStatuses.isEmpty) return;
+
     final status = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Assignment status'),
+        title: Text('Next status • $currentStatus'),
         children: [
-          for (final value in ['Accepted', 'EnRoute', 'OnScene', 'Completed', 'Cancelled'])
+          for (final value in nextStatuses)
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, value),
               child: Text(value),
@@ -265,8 +284,18 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
                   title: Text('Emergency: ${_assignment!['emergency_id'] ?? 'Unknown'}'),
                   subtitle: Text('Status: ${_assignment!['status'] ?? 'Unknown'}'),
                   trailing: FilledButton(
-                    onPressed: _updateAssignment,
-                    child: const Text('Update'),
+                    onPressed: _nextAssignmentStatuses(
+                      _assignment!['status']?.toString() ?? '',
+                    ).isEmpty
+                        ? null
+                        : _updateAssignment,
+                    child: Text(
+                      _nextAssignmentStatuses(
+                        _assignment!['status']?.toString() ?? '',
+                      ).isEmpty
+                          ? 'Terminal'
+                          : 'Update',
+                    ),
                   ),
                 )),
               if (_assignment != null)
