@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -38,6 +39,40 @@ class _EmergencyTrackingPageState
   double? _responderLongitude;
   String? _responderAssignmentStatus;
   DateTime? _responderLocationUpdatedAt;
+
+  double? get _responderDistanceKm {
+    if (_emergencyLatitude == null ||
+        _emergencyLongitude == null ||
+        _responderLatitude == null ||
+        _responderLongitude == null) {
+      return null;
+    }
+
+    const earthRadiusKm = 6371.0;
+    final lat1 = _emergencyLatitude! * math.pi / 180;
+    final lat2 = _responderLatitude! * math.pi / 180;
+    final deltaLat = (_responderLatitude! - _emergencyLatitude!) * math.pi / 180;
+    final deltaLon = (_responderLongitude! - _emergencyLongitude!) * math.pi / 180;
+    final haversine = math.pow(math.sin(deltaLat / 2), 2) +
+        math.cos(lat1) *
+            math.cos(lat2) *
+            math.pow(math.sin(deltaLon / 2), 2);
+    final centralAngle = 2 * math.atan2(math.sqrt(haversine), math.sqrt(1 - haversine));
+    return earthRadiusKm * centralAngle;
+  }
+
+  String? get _estimatedArrival {
+    final distanceKm = _responderDistanceKm;
+    if (distanceKm == null) return null;
+    // V1 estimate: straight-line distance at a conservative 30 km/h.
+    final minutes = math.max(1, (distanceKm / 30 * 60).round());
+    if (minutes < 60) return '~$minutes min estimated';
+    final hours = minutes ~/ 60;
+    final remainingMinutes = minutes % 60;
+    return remainingMinutes == 0
+        ? '~${hours}h estimated'
+        : '~${hours}h ${remainingMinutes}m estimated';
+  }
 
   bool get _isTerminal =>
       _status == 'Completed' || _status == 'Cancelled';
@@ -286,13 +321,24 @@ class _EmergencyTrackingPageState
                       title: Text('Emergency location'),
                       subtitle: Text('Emergency origin'),
                     ),
+                    if (_responderDistanceKm != null)
+                      ListTile(
+                        leading: const Icon(Icons.route_outlined),
+                        title: Text(
+                          '${_responderDistanceKm!.toStringAsFixed(2)} km from emergency',
+                        ),
+                        subtitle: Text(
+                          _estimatedArrival ?? 'Travel estimate unavailable',
+                        ),
+                      ),
                     ListTile(
                       leading: const Icon(Icons.location_on_outlined),
                       title: const Text('Responder location'),
                       subtitle: Text(
                         '${_responderLatitude!.toStringAsFixed(5)}, '
                         '${_responderLongitude!.toStringAsFixed(5)}'
-                        '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
+                        '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}'
+                        '${_responderLocationUpdatedAt == null ? '' : ' • Updated ${_responderLocationUpdatedAt!.toLocal().toString().substring(0, 19)}'}',
                       ),
                     ),
                     const Padding(
