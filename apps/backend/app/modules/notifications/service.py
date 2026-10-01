@@ -95,4 +95,4 @@ class NotificationService:
         device_token = self.repository.get_device_token_for_user(token_id, user_id)
         if device_token is None:
             raise NotificationNotFound()
-        self.repository.delete_device_token(device_token)
+        self.repository.deactivate_device_token(device_token)
