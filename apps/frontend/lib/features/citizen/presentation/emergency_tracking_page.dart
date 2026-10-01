@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/emergency_api.dart';
+import '../../../core/network/api_client.dart';
+
 import '../../../core/realtime/realtime_provider.dart';
 import '../../../core/realtime/websocket_service.dart';
 
@@ -18,6 +21,7 @@ class EmergencyTrackingPage extends ConsumerStatefulWidget {
 
 class _EmergencyTrackingPageState
     extends ConsumerState<EmergencyTrackingPage> {
+  late final EmergencyApi _emergencyApi;
   StreamSubscription<RealtimeEvent>? _subscription;
   String _status = 'Pending';
   String _message = 'Waiting for emergency response updates.';
@@ -27,6 +31,8 @@ class _EmergencyTrackingPageState
   @override
   void initState() {
     super.initState();
+    _emergencyApi = EmergencyApi(ref.read(apiClientProvider));
+    _loadEmergency();
     _subscription = ref.read(realtimeServiceProvider).events.listen(
       _handleEvent,
       onError: (_) {
@@ -37,6 +43,24 @@ class _EmergencyTrackingPageState
         });
       },
     );
+  }
+
+  Future<void> _loadEmergency() async {
+    try {
+      final emergency = await _emergencyApi.getEmergency(widget.emergencyId);
+      if (!mounted) return;
+      final status = emergency['status']?.toString();
+      if (status == null || status.isEmpty) return;
+      setState(() {
+        _status = status;
+        _message = 'Emergency state synchronized with the server.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _message = 'Unable to synchronize emergency state. Live updates remain active.';
+      });
+    }
   }
 
   void _handleEvent(RealtimeEvent event) {
