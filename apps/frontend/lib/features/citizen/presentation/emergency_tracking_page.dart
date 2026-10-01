@@ -33,6 +33,7 @@ class _EmergencyTrackingPageState
   double? _emergencyLongitude;
   bool _connected = false;
   DateTime? _lastRealtimeEventAt;
+  bool _reconnecting = false;
   final List<String> _updates = <String>[];
   List<Map<String, dynamic>> _timeline = <Map<String, dynamic>>[];
   bool _timelineLoading = true;
@@ -309,6 +310,17 @@ class _EmergencyTrackingPageState
     );
   }
 
+  Future<void> _refreshAfterReconnect() async {
+    if (_reconnecting || !mounted) return;
+    setState(() => _reconnecting = true);
+    try {
+      await _loadEmergency();
+      await _loadTimeline();
+    } finally {
+      if (mounted) setState(() => _reconnecting = false);
+    }
+  }
+
   void _handleEvent(RealtimeEvent event) {
     final eventEmergencyId = event.data['emergency_id']?.toString();
     if (eventEmergencyId != null &&
@@ -320,8 +332,12 @@ class _EmergencyTrackingPageState
 
     setState(() {
       if (event.event == 'connected') {
+        final wasDisconnected = !_connected;
         _connected = true;
         _lastRealtimeEventAt = DateTime.now();
+        if (wasDisconnected) {
+          _message = 'Live connection restored. Synchronizing emergency state…';
+        }
       } else {
         _lastRealtimeEventAt = DateTime.now();
       }
@@ -405,8 +421,25 @@ class _EmergencyTrackingPageState
                 ),
                 title: Text(_realtimeStatusLabel),
                 subtitle: Text(_message),
+                trailing: _reconnecting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : null,
               ),
             ),
+            if (!_connected && _lastRealtimeEventAt != null) ...[
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _reconnecting ? null : _refreshAfterReconnect,
+                  icon: const Icon(Icons.sync),
+                  label: const Text('Synchronize now'),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Card(
               child: ListTile(
