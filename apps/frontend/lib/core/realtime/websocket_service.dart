@@ -39,6 +39,7 @@ class WebSocketService {
   String? _token;
   bool _disposed = false;
   bool _connected = false;
+  int _connectionGeneration = 0;
 
   Stream<RealtimeEvent> get events => _eventsController.stream;
   bool get isConnected => _connected;
@@ -52,6 +53,13 @@ class WebSocketService {
 
   void _open() {
     if (_disposed || _token == null || _token!.isEmpty) return;
+
+    final generation = ++_connectionGeneration;
+    _subscription?.cancel();
+    _subscription = null;
+    _channel?.sink.close();
+    _channel = null;
+    _stopHeartbeat();
     final uri = Uri.parse(baseHttpUrl);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
     final websocketUri = uri.replace(
@@ -66,6 +74,7 @@ class WebSocketService {
 
     _subscription = channel.stream.listen(
       (message) {
+        if (generation != _connectionGeneration || _disposed) return;
         try {
           final json = jsonDecode(message as String);
           if (json is Map<String, dynamic>) {
@@ -81,14 +90,18 @@ class WebSocketService {
         }
       },
       onError: (Object error, StackTrace stackTrace) {
+        if (generation != _connectionGeneration || _disposed) return;
         _connected = false;
         _stopHeartbeat();
-        if (!_disposed) _eventsController.addError(error, stackTrace);
+        _eventsController.addError(error, stackTrace);
+        _scheduleReconnect();
       },
       onDone: () {
+        if (generation != _connectionGeneration || _disposed) return;
         _connected = false;
         _stopHeartbeat();
         _channel = null;
+        _subscription = null;
         _scheduleReconnect();
       },
       cancelOnError: false,
@@ -119,6 +132,7 @@ class WebSocketService {
   }
 
   Future<void> disconnect() async {
+    _connectionGeneration++;
     _reconnectTimer?.cancel();
     _reconnectTimer = null;
     _stopHeartbeat();
