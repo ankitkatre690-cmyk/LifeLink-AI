@@ -30,6 +30,9 @@ class _EmergencyTrackingPageState
   List<Map<String, dynamic>> _timeline = <Map<String, dynamic>>[];
   bool _timelineLoading = true;
   bool _cancelling = false;
+  double? _responderLatitude;
+  double? _responderLongitude;
+  String? _responderAssignmentStatus;
 
   bool get _isTerminal =>
       _status == 'Completed' || _status == 'Cancelled';
@@ -154,6 +157,11 @@ class _EmergencyTrackingPageState
       if (nextStatus != null && nextStatus.isNotEmpty) {
         _status = nextStatus;
       }
+      if (event.event == 'responder.location_updated') {
+        _responderLatitude = (event.data['latitude'] as num?)?.toDouble();
+        _responderLongitude = (event.data['longitude'] as num?)?.toDouble();
+        _responderAssignmentStatus = event.data['assignment_status']?.toString();
+      }
 
       _message = _eventMessage(event.event);
 
@@ -178,6 +186,8 @@ class _EmergencyTrackingPageState
         return 'A responder has been assigned to your emergency.';
       case 'responder.assignment_status_changed':
         return 'Responder assignment status updated.';
+      case 'responder.location_updated':
+        return 'Responder location updated.';
       case 'dispatch.hospital_incoming':
         return 'Hospital coordination has been initiated.';
       default:
@@ -221,6 +231,20 @@ class _EmergencyTrackingPageState
                 subtitle: Text(_status),
               ),
             ),
+            if (_responderLatitude != null && _responderLongitude != null) ...[
+              const SizedBox(height: 16),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: const Text('Responder location'),
+                  subtitle: Text(
+                    '${_responderLatitude!.toStringAsFixed(5)}, '
+                    '${_responderLongitude!.toStringAsFixed(5)}'
+                    '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             const Text(
               'Emergency timeline',
