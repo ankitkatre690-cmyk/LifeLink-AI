@@ -102,6 +102,19 @@ class ResponderRepository:
             .first()
         )
 
+    def get_active_assignment_for_responder_profile(self, responder_id: uuid.UUID):
+        return (
+            self.db.query(EmergencyAssignment)
+            .filter(
+                EmergencyAssignment.responder_id == responder_id,
+                EmergencyAssignment.status.in_(
+                    ["Assigned", "Accepted", "EnRoute", "OnScene"]
+                ),
+            )
+            .order_by(EmergencyAssignment.created_at.desc())
+            .first()
+        )
+
     def get_assignment_for_emergency_and_responder(
         self,
         emergency_id: uuid.UUID,
