@@ -94,6 +94,6 @@ class NotificationRepository:
         self.db.refresh(device_token)
         return device_token
 
-    def delete_device_token(self, device_token: DeviceToken):
-        self.db.delete(device_token)
+    def deactivate_device_token(self, device_token: DeviceToken):
+        device_token.is_active = False
         self.db.commit()
