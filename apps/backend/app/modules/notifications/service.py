@@ -1,6 +1,7 @@
 import logging
 import uuid
 
+from app.database.models.device_token import DeviceToken
 from app.database.models.notification import Notification
 from app.modules.notifications.exceptions import NotificationNotFound
 from app.modules.notifications.repository import NotificationRepository
@@ -78,3 +79,20 @@ class NotificationService:
                 )
 
         return notification
+
+
+    def register_device_token(self, user_id: uuid.UUID, token: str, platform: str):
+        existing = self.repository.get_device_token_by_value(user_id, token)
+        if existing is not None:
+            existing.platform = platform
+            existing.is_active = True
+            return self.repository.save_device_token(existing)
+        return self.repository.create_device_token(
+            DeviceToken(user_id=user_id, token=token, platform=platform, is_active=True)
+        )
+
+    def unregister_device_token(self, user_id: uuid.UUID, token_id: uuid.UUID):
+        device_token = self.repository.get_device_token_for_user(token_id, user_id)
+        if device_token is None:
+            raise NotificationNotFound()
+        self.repository.delete_device_token(device_token)
