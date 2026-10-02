@@ -343,13 +343,13 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
                   title: Text('Emergency: ${_assignment!['emergency_id'] ?? 'Unknown'}'),
                   subtitle: Text('Status: ${_assignment!['status'] ?? 'Unknown'}'),
                   trailing: FilledButton(
-                    onPressed: _nextAssignmentStatuses(
+                    onPressed: nextResponderAssignmentStatuses(
                       _assignment!['status']?.toString() ?? '',
                     ).isEmpty
                         ? null
                         : _updateAssignment,
                     child: Text(
-                      _nextAssignmentStatuses(
+                      nextResponderAssignmentStatuses(
                         _assignment!['status']?.toString() ?? '',
                       ).isEmpty
                           ? 'Terminal'
