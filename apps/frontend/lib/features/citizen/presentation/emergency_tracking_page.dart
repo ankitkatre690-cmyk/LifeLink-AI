@@ -194,9 +194,9 @@ class _EmergencyTrackingPageState
       final emergency = await _emergencyApi.getEmergency(widget.emergencyId);
       if (!mounted) return;
       final status = emergency['status']?.toString();
-      if (status == null || status.isEmpty) return;
       _emergencyLatitude = (emergency['latitude'] as num?)?.toDouble();
       _emergencyLongitude = (emergency['longitude'] as num?)?.toDouble();
+      if (status == null || status.isEmpty) return;
       setState(() {
         _status = status;
         _message = 'Emergency state synchronized with the server.';
@@ -345,17 +345,27 @@ class _EmergencyTrackingPageState
       }
 
       final nextStatus = event.data['status']?.toString();
-      if (nextStatus != null && nextStatus.isNotEmpty) {
-        _status = nextStatus;
-      }
-      if (event.event == 'dispatch.assigned' && nextStatus != null) {
-        _responderAssignmentStatus = nextStatus;
-      }
-      if (event.event == 'responder.assignment_status_changed') {
-        final assignmentStatus = event.data['status']?.toString();
-        if (assignmentStatus != null && assignmentStatus.isNotEmpty) {
-          _responderAssignmentStatus = assignmentStatus;
-        }
+      switch (event.event) {
+        case 'emergency.status_changed':
+          if (nextStatus != null && nextStatus.isNotEmpty) {
+            _status = nextStatus;
+          }
+          break;
+        case 'dispatch.assigned':
+          if (nextStatus != null && nextStatus.isNotEmpty) {
+            _responderAssignmentStatus = nextStatus;
+          }
+          break;
+        case 'responder.assignment_status_changed':
+          final assignmentStatus = event.data['status']?.toString();
+          if (assignmentStatus != null && assignmentStatus.isNotEmpty) {
+            _responderAssignmentStatus = assignmentStatus;
+          }
+          final emergencyStatus = event.data['emergency_status']?.toString();
+          if (emergencyStatus != null && emergencyStatus.isNotEmpty) {
+            _status = emergencyStatus;
+          }
+          break;
       }
       if (event.event == 'responder.location_updated') {
         final latitude = (event.data['latitude'] as num?)?.toDouble();
@@ -476,7 +486,7 @@ class _EmergencyTrackingPageState
               ),
               const SizedBox(height: 16),
             ],
-            if (_responderLatitude != null && _responderLongitude != null) ...[
+            if (_emergencyLatitude != null && _emergencyLongitude != null) ...[
               const SizedBox(height: 16),
               Card(
                 clipBehavior: Clip.antiAlias,
@@ -533,23 +543,31 @@ class _EmergencyTrackingPageState
                           _estimatedArrival ?? 'Travel estimate unavailable',
                         ),
                       ),
-                    ListTile(
-                      leading: Icon(
-                        _locationIsStale
-                            ? Icons.location_off_outlined
-                            : Icons.gps_fixed,
+                    if (_responderLatitude != null && _responderLongitude != null) ...[
+                      ListTile(
+                        leading: Icon(
+                          _locationIsStale
+                              ? Icons.location_off_outlined
+                              : Icons.gps_fixed,
+                        ),
+                        title: const Text('Responder location'),
+                        subtitle: Text(
+                          '${_responderLatitude!.toStringAsFixed(5)}, '
+                          '${_responderLongitude!.toStringAsFixed(5)}'
+                          '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
+                        ),
                       ),
-                      title: const Text('Responder location'),
-                      subtitle: Text(
-                        '${_responderLatitude!.toStringAsFixed(5)}, '
-                        '${_responderLongitude!.toStringAsFixed(5)}'
-                        '${_responderAssignmentStatus == null ? '' : ' • $_responderAssignmentStatus'}',
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Text(_locationFreshnessLabel),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: Text(_locationFreshnessLabel),
-                    ),
+                    ] else
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: Text(
+                          'Waiting for the responder to publish a GPS location.',
+                        ),
+                      ),
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: Text(
