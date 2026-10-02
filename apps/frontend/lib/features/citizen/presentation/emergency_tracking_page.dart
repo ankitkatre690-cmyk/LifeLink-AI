@@ -330,9 +330,11 @@ class _EmergencyTrackingPageState
 
     if (!mounted) return;
 
+    var restoredConnection = false;
     setState(() {
       if (event.event == 'connected') {
         final wasDisconnected = !_connected;
+        restoredConnection = wasDisconnected;
         _connected = true;
         _lastRealtimeEventAt = DateTime.now();
         if (wasDisconnected) {
@@ -345,6 +347,15 @@ class _EmergencyTrackingPageState
       final nextStatus = event.data['status']?.toString();
       if (nextStatus != null && nextStatus.isNotEmpty) {
         _status = nextStatus;
+      }
+      if (event.event == 'dispatch.assigned' && nextStatus != null) {
+        _responderAssignmentStatus = nextStatus;
+      }
+      if (event.event == 'responder.assignment_status_changed') {
+        final assignmentStatus = event.data['status']?.toString();
+        if (assignmentStatus != null && assignmentStatus.isNotEmpty) {
+          _responderAssignmentStatus = assignmentStatus;
+        }
       }
       if (event.event == 'responder.location_updated') {
         final latitude = (event.data['latitude'] as num?)?.toDouble();
@@ -367,6 +378,10 @@ class _EmergencyTrackingPageState
         }
       }
     });
+
+    if (restoredConnection) {
+      unawaited(_refreshAfterReconnect());
+    }
   }
 
   String get _realtimeStatusLabel {
