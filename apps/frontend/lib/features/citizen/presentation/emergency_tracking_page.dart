@@ -12,6 +12,36 @@ import '../../../core/network/api_client.dart';
 import '../../../core/realtime/realtime_provider.dart';
 import '../../../core/realtime/websocket_service.dart';
 
+class EmergencyTrackingEventMapping {
+  const EmergencyTrackingEventMapping({
+    this.emergencyStatus,
+    this.assignmentStatus,
+  });
+
+  final String? emergencyStatus;
+  final String? assignmentStatus;
+}
+
+EmergencyTrackingEventMapping mapEmergencyTrackingEvent(
+  String event,
+  Map<String, dynamic> data,
+) {
+  final status = data['status']?.toString();
+  switch (event) {
+    case 'emergency.status_changed':
+      return EmergencyTrackingEventMapping(emergencyStatus: status);
+    case 'dispatch.assigned':
+      return EmergencyTrackingEventMapping(assignmentStatus: status);
+    case 'responder.assignment_status_changed':
+      return EmergencyTrackingEventMapping(
+        emergencyStatus: data['emergency_status']?.toString(),
+        assignmentStatus: status,
+      );
+    default:
+      return const EmergencyTrackingEventMapping();
+  }
+}
+
 class EmergencyTrackingPage extends ConsumerStatefulWidget {
   const EmergencyTrackingPage({required this.emergencyId, super.key});
 
@@ -344,28 +374,14 @@ class _EmergencyTrackingPageState
         _lastRealtimeEventAt = DateTime.now();
       }
 
-      final nextStatus = event.data['status']?.toString();
-      switch (event.event) {
-        case 'emergency.status_changed':
-          if (nextStatus != null && nextStatus.isNotEmpty) {
-            _status = nextStatus;
-          }
-          break;
-        case 'dispatch.assigned':
-          if (nextStatus != null && nextStatus.isNotEmpty) {
-            _responderAssignmentStatus = nextStatus;
-          }
-          break;
-        case 'responder.assignment_status_changed':
-          final assignmentStatus = event.data['status']?.toString();
-          if (assignmentStatus != null && assignmentStatus.isNotEmpty) {
-            _responderAssignmentStatus = assignmentStatus;
-          }
-          final emergencyStatus = event.data['emergency_status']?.toString();
-          if (emergencyStatus != null && emergencyStatus.isNotEmpty) {
-            _status = emergencyStatus;
-          }
-          break;
+      final mapping = mapEmergencyTrackingEvent(event.event, event.data);
+      if (mapping.emergencyStatus != null &&
+          mapping.emergencyStatus!.isNotEmpty) {
+        _status = mapping.emergencyStatus!;
+      }
+      if (mapping.assignmentStatus != null &&
+          mapping.assignmentStatus!.isNotEmpty) {
+        _responderAssignmentStatus = mapping.assignmentStatus!;
       }
       if (event.event == 'responder.location_updated') {
         final latitude = (event.data['latitude'] as num?)?.toDouble();
