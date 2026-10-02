@@ -100,26 +100,39 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     final service = ref.read(realtimeServiceProvider);
     if (!mounted) return;
     setState(() => _realtimeConnected = service.isConnected);
-    _realtimeSubscription = service.events.listen((event) {
-      if (!mounted) return;
-      final type = event.event;
-      final data = event.data;
-      if (type != 'dispatch.assignment') return;
-      final assignmentId = data['assignment_id']?.toString();
-      if (assignmentId == null || assignmentId.isEmpty) return;
+    _realtimeSubscription = service.events.listen(
+      (event) {
+        if (!mounted) return;
+        final type = event.event;
+        final data = event.data;
 
-      setState(() {
-        _realtimeConnected = true;
-        _assignmentId = assignmentId;
-        _assignment = {
-          'id': assignmentId,
-          'emergency_id': data['emergency_id'],
-          'status': data['status'] ?? 'Assigned',
-          'distance_km': data['distance_km'],
-          'eta_minutes': data['eta_minutes'],
-        };
-      });
-    });
+        if (type == 'connected') {
+          setState(() => _realtimeConnected = true);
+          unawaited(_load());
+          return;
+        }
+
+        if (type != 'dispatch.assignment') return;
+        final assignmentId = data['assignment_id']?.toString();
+        if (assignmentId == null || assignmentId.isEmpty) return;
+
+        setState(() {
+          _realtimeConnected = true;
+          _assignmentId = assignmentId;
+          _assignment = {
+            'id': assignmentId,
+            'emergency_id': data['emergency_id'],
+            'status': data['status'] ?? 'Assigned',
+            'distance_km': data['distance_km'],
+            'eta_minutes': data['eta_minutes'],
+          };
+        });
+      },
+      onError: (_, __) {
+        if (!mounted) return;
+        setState(() => _realtimeConnected = false);
+      },
+    );
   }
 
   Future<void> _changeStatus() async {
