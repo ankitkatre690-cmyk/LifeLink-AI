@@ -402,6 +402,7 @@ class _EmergencyTrackingPageState
   @override
   void dispose() {
     _subscription?.cancel();
+    _responderAnimationTimer?.cancel();
     super.dispose();
   }
 
