@@ -107,8 +107,12 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
         final data = event.data;
 
         if (type == 'connected') {
+          final wasDisconnected = !_realtimeConnected;
           setState(() => _realtimeConnected = true);
-          unawaited(_load());
+          if (wasDisconnected) {
+            unawaited(_load());
+            unawaited(_updateLocation());
+          }
           return;
         }
 
