@@ -12,6 +12,21 @@ import '../../../core/realtime/realtime_provider.dart';
 import '../../../core/realtime/websocket_service.dart';
 import '../data/responder_api.dart';
 
+List<String> nextResponderAssignmentStatuses(String current) {
+  switch (current) {
+    case 'Assigned':
+      return const ['Accepted', 'Cancelled'];
+    case 'Accepted':
+      return const ['EnRoute', 'Cancelled'];
+    case 'EnRoute':
+      return const ['OnScene', 'Cancelled'];
+    case 'OnScene':
+      return const ['Completed', 'Cancelled'];
+    default:
+      return const [];
+  }
+}
+
 final responderApiProvider = Provider<ResponderApi>(
   (ref) => ResponderApi(ref.watch(apiClientProvider)),
 );
@@ -185,20 +200,6 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     }
   }
 
-  List<String> _nextAssignmentStatuses(String current) {
-    switch (current) {
-      case 'Assigned':
-        return const ['Accepted', 'Cancelled'];
-      case 'Accepted':
-        return const ['EnRoute', 'Cancelled'];
-      case 'EnRoute':
-        return const ['OnScene', 'Cancelled'];
-      case 'OnScene':
-        return const ['Completed', 'Cancelled'];
-      default:
-        return const [];
-    }
-  }
 
   Future<void> _updateAssignment() async {
     final id = _assignment?['id']?.toString();
@@ -206,7 +207,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
       return;
     }
     final currentStatus = _assignment?['status']?.toString() ?? '';
-    final nextStatuses = _nextAssignmentStatuses(currentStatus);
+    final nextStatuses = nextResponderAssignmentStatuses(currentStatus);
     if (nextStatuses.isEmpty) return;
 
     final status = await showDialog<String>(
