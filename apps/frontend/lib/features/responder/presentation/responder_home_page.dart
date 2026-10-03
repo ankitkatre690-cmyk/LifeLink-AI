@@ -55,8 +55,10 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     Future.microtask(() async {
       await _load();
       await _connectRealtime();
-      await _updateLocation();
-      _startLocationUpdates();
+      if (_profile != null) {
+        await _updateLocation();
+        _startLocationUpdates();
+      }
     });
   }
 
@@ -86,7 +88,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   }
 
   Future<void> _updateLocation() async {
-    if (_locationUpdating) return;
+    if (_profile == null || _locationUpdating) return;
     _locationUpdating = true;
     try {
       final position = await LocationService().getCurrentPosition();
