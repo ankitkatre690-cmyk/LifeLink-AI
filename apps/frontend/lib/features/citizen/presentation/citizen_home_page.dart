@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/notifications/push_notification_service.dart';
-import 'emergency_sos_page.dart';
 
 class CitizenHomePage extends ConsumerStatefulWidget {
   const CitizenHomePage({super.key});
@@ -91,11 +91,7 @@ class _CitizenHomePageState extends ConsumerState<CitizenHomePage> {
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const EmergencySosPage(),
-                      ),
-                    ),
+                    onPressed: () => context.push('/citizen/emergency-sos'),
                     icon: const Icon(Icons.sos),
                     label: const Text('Emergency SOS'),
                   ),

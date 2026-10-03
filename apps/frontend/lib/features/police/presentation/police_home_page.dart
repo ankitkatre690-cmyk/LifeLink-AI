@@ -30,14 +30,19 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _emergencies = await ref.read(policeApiProvider).getActiveEmergencies();
     } on DioException catch (error) {
       if (mounted) {
-        setState(() => _error = error.response?.data is Map
-            ? error.response?.data['detail']?.toString()
-            : 'Unable to load active emergencies.');
+        setState(
+          () => _error = error.response?.data is Map
+              ? error.response?.data['detail']?.toString()
+              : 'Unable to load active emergencies.',
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -58,8 +63,14 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
           decoration: const InputDecoration(labelText: 'Notes (optional)'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Open Case')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Open Case'),
+          ),
         ],
       ),
     );
@@ -74,9 +85,13 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
       );
       if (mounted) setState(() {});
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to create police case.');
+      if (mounted) {
+        setState(
+          () => _error = error.response?.data is Map
+              ? error.response?.data['detail']?.toString()
+              : 'Unable to create police case.',
+        );
+      }
     } finally {
       notesController.dispose();
     }
@@ -109,9 +124,13 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
       );
       if (mounted) setState(() {});
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to update police case.');
+      if (mounted) {
+        setState(
+          () => _error = error.response?.data is Map
+              ? error.response?.data['detail']?.toString()
+              : 'Unable to update police case.',
+        );
+      }
     }
   }
 
@@ -126,9 +145,13 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
         );
       }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to dispatch responder.');
+      if (mounted) {
+        setState(
+          () => _error = error.response?.data is Map
+              ? error.response?.data['detail']?.toString()
+              : 'Unable to dispatch responder.',
+        );
+      }
     }
   }
 
@@ -139,8 +162,14 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
       appBar: AppBar(
         title: const Text('LifeLink AI'),
         actions: [
-          IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh)),
-          IconButton(onPressed: () => ref.read(authProvider.notifier).logout(), icon: const Icon(Icons.logout)),
+          IconButton(
+            onPressed: _loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            onPressed: () => ref.read(authProvider.notifier).logout(),
+            icon: const Icon(Icons.logout),
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -148,14 +177,19 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text('Police Dashboard', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              'Police Dashboard',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             Text('Role: ${auth.role ?? 'Police'}'),
             const SizedBox(height: 16),
             if (_error != null)
-              Card(child: ListTile(
-                leading: const Icon(Icons.error_outline),
-                title: Text(_error!),
-              )),
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.error_outline),
+                  title: Text(_error!),
+                ),
+              ),
             if (_selectedCase != null)
               Card(
                 child: Padding(
@@ -163,15 +197,29 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Selected Police Case', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('Emergency: ${_selectedCase!['emergency_id'] ?? 'Unknown'}'),
-                      Text('Status: ${_selectedCase!['case_status'] ?? 'Unknown'}'),
+                      const Text(
+                        'Selected Police Case',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Emergency: ${_selectedCase!['emergency_id'] ?? 'Unknown'}',
+                      ),
+                      Text(
+                        'Status: ${_selectedCase!['case_status'] ?? 'Unknown'}',
+                      ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
                         children: [
-                          OutlinedButton(onPressed: _updateCase, child: const Text('Update Case')),
-                          FilledButton.icon(onPressed: _dispatch, icon: const Icon(Icons.send), label: const Text('Dispatch')),
+                          OutlinedButton(
+                            onPressed: _updateCase,
+                            child: const Text('Update Case'),
+                          ),
+                          FilledButton.icon(
+                            onPressed: _dispatch,
+                            icon: const Icon(Icons.send),
+                            label: const Text('Dispatch'),
+                          ),
                         ],
                       ),
                     ],
@@ -179,34 +227,44 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
                 ),
               ),
             const SizedBox(height: 12),
-            const Text('Active Emergencies', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Active Emergencies',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             if (_loading)
               const Padding(
                 padding: EdgeInsets.all(32),
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (_emergencies.isEmpty)
-              const Card(child: ListTile(
-                leading: Icon(Icons.check_circle_outline),
-                title: Text('No active emergencies'),
-              ))
+              const Card(
+                child: ListTile(
+                  leading: Icon(Icons.check_circle_outline),
+                  title: Text('No active emergencies'),
+                ),
+              )
             else
-              ..._emergencies.map((emergency) => Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.emergency),
-                      title: Text(emergency['emergency_type']?.toString() ?? 'Emergency'),
-                      subtitle: Text(
-                        'Severity: ${emergency['severity'] ?? '-'}\n'
-                        'Status: ${emergency['status'] ?? '-'}\n'
-                        'Location: ${emergency['latitude'] ?? '-'}, ${emergency['longitude'] ?? '-'}',
-                      ),
-                      isThreeLine: true,
-                      trailing: FilledButton(
-                        onPressed: () => _openEmergency(emergency),
-                        child: const Text('Case'),
-                      ),
+              ..._emergencies.map(
+                (emergency) => Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.emergency),
+                    title: Text(
+                      emergency['emergency_type']?.toString() ?? 'Emergency',
                     ),
-                  )),
+                    subtitle: Text(
+                      'Severity: ${emergency['severity'] ?? '-'}\n'
+                      'Status: ${emergency['status'] ?? '-'}\n'
+                      'Location: ${emergency['latitude'] ?? '-'}, '
+                      '${emergency['longitude'] ?? '-'}',
+                    ),
+                    isThreeLine: true,
+                    trailing: FilledButton(
+                      onPressed: () => _openEmergency(emergency),
+                      child: const Text('Case'),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

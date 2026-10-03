@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/location/location_service.dart';
 import '../../../core/network/api_client.dart';
 import '../data/emergency_api.dart';
-import 'emergency_tracking_page.dart';
 
 final emergencyApiProvider = Provider<EmergencyApi>(
   (ref) => EmergencyApi(ref.watch(apiClientProvider)),
@@ -54,7 +54,7 @@ class _EmergencySosPageState extends ConsumerState<EmergencySosPage> {
 
     try {
       final position =
-          await const LocationService().getCurrentPosition();
+          await LocationService().getCurrentPosition();
       final emergency = await ref.read(emergencyApiProvider).createEmergency(
             emergencyType: 'GeneralSOS',
             latitude: position.latitude,
@@ -63,13 +63,7 @@ class _EmergencySosPageState extends ConsumerState<EmergencySosPage> {
           );
 
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => EmergencyTrackingPage(
-            emergencyId: emergency['id'].toString(),
-          ),
-        ),
-      );
+      context.go('/citizen/emergency/${emergency['id']}');
     } on LocationException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } on DioException catch (error) {

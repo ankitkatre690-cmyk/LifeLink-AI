@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database.models.user import User
 from app.database.session import get_db
-from app.modules.auth.dependencies import get_current_user
+from app.modules.auth.dependencies import get_current_user, require_roles
 from app.modules.citizen.exceptions import (
     CitizenProfileExists,
     CitizenProfileNotFound,
@@ -29,7 +29,7 @@ router = APIRouter(
 def create_profile(
     request: CitizenProfileCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = CitizenService(CitizenRepository(db))
@@ -53,7 +53,7 @@ def create_profile(
 )
 def get_profile(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = CitizenService(CitizenRepository(db))
@@ -75,7 +75,7 @@ def get_profile(
 def update_profile(
     request: CitizenProfileCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = CitizenService(CitizenRepository(db))
@@ -99,7 +99,7 @@ def update_profile(
 )
 def delete_profile(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_roles("Citizen")),
 ):
 
     service = CitizenService(CitizenRepository(db))

@@ -4,11 +4,28 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/location/location_service.dart';
+
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/realtime/realtime_client.dart';
-import '../../../core/storage/secure_storage.dart';
+import '../../../core/realtime/realtime_provider.dart';
+import '../../../core/realtime/websocket_service.dart';
 import '../data/responder_api.dart';
+
+List<String> nextResponderAssignmentStatuses(String current) {
+  switch (current) {
+    case 'Assigned':
+      return const ['Accepted', 'Cancelled'];
+    case 'Accepted':
+      return const ['EnRoute', 'Cancelled'];
+    case 'EnRoute':
+      return const ['OnScene', 'Cancelled'];
+    case 'OnScene':
+      return const ['Completed', 'Cancelled'];
+    default:
+      return const [];
+  }
+}
 
 final responderApiProvider = Provider<ResponderApi>(
   (ref) => ResponderApi(ref.watch(apiClientProvider)),
@@ -27,9 +44,10 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   Map<String, dynamic>? _profile;
   Map<String, dynamic>? _assignment;
   String? _assignmentId;
-  RealtimeClient? _realtime;
-  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
   bool _realtimeConnected = false;
+  Timer? _locationTimer;
+  bool _locationUpdating = false;
 
   @override
   void initState() {
@@ -37,6 +55,10 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     Future.microtask(() async {
       await _load();
       await _connectRealtime();
+      if (_profile != null) {
+        await _updateLocation();
+        _startLocationUpdates();
+      }
     });
   }
 
@@ -44,6 +66,8 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     setState(() { _loading = true; _error = null; });
     try {
       _profile = await ref.read(responderApiProvider).getMyProfile();
+      _assignment = await ref.read(responderApiProvider).getActiveAssignment();
+      _assignmentId = _assignment?['id']?.toString();
     } on DioException catch (error) {
       if (mounted) {
         setState(() => _error = error.response?.data is Map
@@ -55,36 +79,81 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     }
   }
 
-  Future<void> _connectRealtime() async {
-    final token = await const SecureStorage().readAccessToken();
-    if (!mounted || token == null || token.isEmpty) return;
-
-    final client = RealtimeClient(
-      baseUrl: ref.read(apiClientProvider).dio.options.baseUrl,
-      accessToken: token,
+  void _startLocationUpdates() {
+    _locationTimer?.cancel();
+    _locationTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _updateLocation(),
     );
-    _realtime = client;
-    client.connect();
-    _realtimeSubscription = client.events.listen((event) {
-      if (!mounted) return;
-      final type = event['event']?.toString() ?? '';
-      final data = event['data'];
-      if (type != 'dispatch.assignment' || data is! Map) return;
-      final assignmentId = data['assignment_id']?.toString();
-      if (assignmentId == null || assignmentId.isEmpty) return;
+  }
 
-      setState(() {
-        _realtimeConnected = true;
-        _assignmentId = assignmentId;
-        _assignment = {
-          'id': assignmentId,
-          'emergency_id': data['emergency_id'],
-          'status': data['status'] ?? 'Assigned',
-          'distance_km': data['distance_km'],
-          'eta_minutes': data['eta_minutes'],
-        };
-      });
-    });
+  Future<void> _updateLocation() async {
+    if (_profile == null || _locationUpdating) return;
+    _locationUpdating = true;
+    try {
+      final position = await LocationService().getCurrentPosition();
+      final updated = await ref.read(responderApiProvider).updateLocation(
+        position.latitude,
+        position.longitude,
+      );
+      if (!mounted) return;
+      setState(() => _profile = updated);
+    } on LocationException catch (error) {
+      if (mounted && _profile != null) {
+        setState(() => _error = error.message);
+      }
+    } on DioException catch (error) {
+      if (mounted && _profile != null) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to update responder location.');
+      }
+    } finally {
+      _locationUpdating = false;
+    }
+  }
+
+  Future<void> _connectRealtime() async {
+    final service = ref.read(realtimeServiceProvider);
+    if (!mounted) return;
+    setState(() => _realtimeConnected = service.isConnected);
+    _realtimeSubscription = service.events.listen(
+      (event) {
+        if (!mounted) return;
+        final type = event.event;
+        final data = event.data;
+
+        if (type == 'connected') {
+          final wasDisconnected = !_realtimeConnected;
+          setState(() => _realtimeConnected = true);
+          if (wasDisconnected) {
+            unawaited(_load());
+            unawaited(_updateLocation());
+          }
+          return;
+        }
+
+        if (type != 'dispatch.assignment') return;
+        final assignmentId = data['assignment_id']?.toString();
+        if (assignmentId == null || assignmentId.isEmpty) return;
+
+        setState(() {
+          _realtimeConnected = true;
+          _assignmentId = assignmentId;
+          _assignment = {
+            'id': assignmentId,
+            'emergency_id': data['emergency_id'],
+            'status': data['status'] ?? 'Assigned',
+            'distance_km': data['distance_km'],
+            'eta_minutes': data['eta_minutes'],
+          };
+        });
+      },
+      onError: (_, __) {
+        if (!mounted) return;
+        setState(() => _realtimeConnected = false);
+      },
+    );
   }
 
   Future<void> _changeStatus() async {
@@ -104,11 +173,15 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (status == null) return;
     try {
       _profile = await ref.read(responderApiProvider).updateStatus(status);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to update responder status.');
+      if (mounted) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to update responder status.');
+      }
     }
   }
 
@@ -117,23 +190,34 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (id == null || id.isEmpty) return;
     try {
       _assignment = await ref.read(responderApiProvider).getAssignment(id);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to load assignment.');
+      if (mounted) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to load assignment.');
+      }
     }
   }
 
+
   Future<void> _updateAssignment() async {
     final id = _assignment?['id']?.toString();
-    if (id == null) return;
+    if (id == null) {
+      return;
+    }
+    final currentStatus = _assignment?['status']?.toString() ?? '';
+    final nextStatuses = nextResponderAssignmentStatuses(currentStatus);
+    if (nextStatuses.isEmpty) return;
+
     final status = await showDialog<String>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Assignment status'),
+        title: Text('Next status • $currentStatus'),
         children: [
-          for (final value in ['Accepted', 'EnRoute', 'OnScene', 'Completed', 'Cancelled'])
+          for (final value in nextStatuses)
             SimpleDialogOption(
               onPressed: () => Navigator.pop(context, value),
               child: Text(value),
@@ -144,11 +228,15 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (status == null) return;
     try {
       _assignment = await ref.read(responderApiProvider).updateAssignment(id, status);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } on DioException catch (error) {
-      if (mounted) setState(() => _error = error.response?.data is Map
-          ? error.response?.data['detail']?.toString()
-          : 'Unable to update assignment.');
+      if (mounted) {
+        setState(() => _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to update assignment.');
+      }
     }
   }
 
@@ -179,8 +267,8 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
 
   @override
   void dispose() {
+    _locationTimer?.cancel();
     _realtimeSubscription?.cancel();
-    _realtime?.dispose();
     super.dispose();
   }
 
@@ -257,8 +345,18 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
                   title: Text('Emergency: ${_assignment!['emergency_id'] ?? 'Unknown'}'),
                   subtitle: Text('Status: ${_assignment!['status'] ?? 'Unknown'}'),
                   trailing: FilledButton(
-                    onPressed: _updateAssignment,
-                    child: const Text('Update'),
+                    onPressed: nextResponderAssignmentStatuses(
+                      _assignment!['status']?.toString() ?? '',
+                    ).isEmpty
+                        ? null
+                        : _updateAssignment,
+                    child: Text(
+                      nextResponderAssignmentStatuses(
+                        _assignment!['status']?.toString() ?? '',
+                      ).isEmpty
+                          ? 'Terminal'
+                          : 'Update',
+                    ),
                   ),
                 )),
               if (_assignment != null)

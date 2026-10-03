@@ -1,40 +1,59 @@
+from uuid import UUID
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.database.session import SessionLocal
+from app.core.security import decode_access_token
 from app.database.models.user import User
+from app.database.session import SessionLocal
 from app.realtime.manager import connection_manager
 
 router = APIRouter(tags=["Realtime"])
 
 
-@router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    token = websocket.query_params.get("token")
+def _get_authenticated_user_id(token: str | None) -> UUID | None:
     if not token:
-        await websocket.close(code=1008, reason="Missing token")
-        return
+        return None
+
+    payload = decode_access_token(token)
+    if payload is None:
+        return None
 
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        subject = payload.get("sub")
-        if not subject:
-            raise JWTError()
-        user_id = subject
-    except JWTError:
+        return UUID(str(payload["sub"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    user_id = _get_authenticated_user_id(
+        websocket.query_params.get("token")
+    )
+    if user_id is None:
         await websocket.close(code=1008, reason="Invalid token")
         return
 
     db: Session = SessionLocal()
     try:
-        user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
-        if user is None:
-            await websocket.close(code=1008, reason="User not found")
-            return
+        user = (
+            db.query(User)
+            .filter(
+                User.id == user_id,
+                User.is_active.is_(True),
+            )
+            .first()
+        )
+    finally:
+        db.close()
 
-        await connection_manager.connect(user.id, websocket)
+    if user is None:
+        await websocket.close(code=1008, reason="User not found")
+        return
+
+    await connection_manager.connect(user.id, websocket)
+
+    try:
         await websocket.send_json({
             "event": "connected",
             "data": {"user_id": str(user.id)},
@@ -45,5 +64,4 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
-        await connection_manager.disconnect(user.id if "user" in locals() and user else user_id, websocket)
-        db.close()
+        await connection_manager.disconnect(user.id, websocket)

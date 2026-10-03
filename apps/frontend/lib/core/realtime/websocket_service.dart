@@ -34,49 +34,109 @@ class WebSocketService {
   StreamSubscription<dynamic>? _subscription;
 
   final _eventsController = StreamController<RealtimeEvent>.broadcast();
+  Timer? _reconnectTimer;
+  Timer? _heartbeat;
+  String? _token;
+  bool _disposed = false;
+  bool _connected = false;
+  int _connectionGeneration = 0;
 
   Stream<RealtimeEvent> get events => _eventsController.stream;
+  bool get isConnected => _connected;
 
   void connect(String token) {
-    disconnect();
+    if (_disposed || token.isEmpty) return;
+    _token = token;
+    _reconnectTimer?.cancel();
+    _open();
+  }
 
+  void _open() {
+    if (_disposed || _token == null || _token!.isEmpty) return;
+
+    final generation = ++_connectionGeneration;
+    _subscription?.cancel();
+    _subscription = null;
+    _channel?.sink.close();
+    _channel = null;
+    _stopHeartbeat();
     final uri = Uri.parse(baseHttpUrl);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
     final websocketUri = uri.replace(
       scheme: scheme,
       path: '/ws',
-      queryParameters: {'token': token},
+      queryParameters: {'token': _token!},
     );
 
     final channel = WebSocketChannel.connect(websocketUri);
     _channel = channel;
+    _connected = false;
 
     _subscription = channel.stream.listen(
       (message) {
+        if (generation != _connectionGeneration || _disposed) return;
         try {
           final json = jsonDecode(message as String);
           if (json is Map<String, dynamic>) {
-            _eventsController.add(RealtimeEvent.fromJson(json));
+            final event = RealtimeEvent.fromJson(json);
+            if (event.event == 'connected') {
+              _connected = true;
+              _startHeartbeat();
+            }
+            _eventsController.add(event);
           }
         } catch (_) {
           // Ignore malformed realtime frames; the API remains authoritative.
         }
       },
       onError: (Object error, StackTrace stackTrace) {
+        if (generation != _connectionGeneration || _disposed) return;
+        _connected = false;
+        _stopHeartbeat();
         _eventsController.addError(error, stackTrace);
+        _scheduleReconnect();
       },
       onDone: () {
+        if (generation != _connectionGeneration || _disposed) return;
+        _connected = false;
+        _stopHeartbeat();
         _channel = null;
+        _subscription = null;
+        _scheduleReconnect();
       },
       cancelOnError: false,
     );
   }
 
+  void _startHeartbeat() {
+    _heartbeat?.cancel();
+    _heartbeat = Timer.periodic(
+      const Duration(seconds: 20),
+      (_) => sendHeartbeat(),
+    );
+  }
+
+  void _stopHeartbeat() {
+    _heartbeat?.cancel();
+    _heartbeat = null;
+  }
+
+  void _scheduleReconnect() {
+    if (_disposed || _reconnectTimer?.isActive == true) return;
+    _reconnectTimer = Timer(const Duration(seconds: 3), _open);
+  }
+
+
   Future<void> sendHeartbeat() async {
-    _channel?.sink.add('ping');
+    if (_connected) _channel?.sink.add('ping');
   }
 
   Future<void> disconnect() async {
+    _connectionGeneration++;
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _stopHeartbeat();
+    _connected = false;
     await _subscription?.cancel();
     _subscription = null;
     await _channel?.sink.close();
@@ -84,6 +144,7 @@ class WebSocketService {
   }
 
   Future<void> dispose() async {
+    _disposed = true;
     await disconnect();
     await _eventsController.close();
   }
