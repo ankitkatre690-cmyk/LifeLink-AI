@@ -176,6 +176,10 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
         if (!mounted) return;
         setState(() => _realtimeConnected = false);
       },
+      onDone: () {
+        if (!mounted) return;
+        setState(() => _realtimeConnected = false);
+      },
     );
   }
 
