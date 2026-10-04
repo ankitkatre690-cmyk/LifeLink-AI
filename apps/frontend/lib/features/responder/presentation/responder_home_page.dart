@@ -63,7 +63,11 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       _profile = await ref.read(responderApiProvider).getMyProfile();
       _assignment = await ref.read(responderApiProvider).getActiveAssignment();
