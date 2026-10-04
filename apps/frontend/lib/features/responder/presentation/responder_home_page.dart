@@ -133,6 +133,25 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
           return;
         }
 
+        if (type == 'responder.assignment_status_changed') {
+          final assignmentId = data['assignment_id']?.toString();
+          if (assignmentId == null || assignmentId.isEmpty) return;
+          if (_assignmentId != null && assignmentId != _assignmentId) return;
+
+          setState(() {
+            _realtimeConnected = true;
+            _assignmentId = assignmentId;
+            _assignment = {
+              ...?_assignment,
+              'id': assignmentId,
+              'emergency_id': data['emergency_id'],
+              'status': data['status'],
+              'notes': data['notes'],
+            };
+          });
+          return;
+        }
+
         if (type != 'dispatch.assignment') return;
         final assignmentId = data['assignment_id']?.toString();
         if (assignmentId == null || assignmentId.isEmpty) return;
