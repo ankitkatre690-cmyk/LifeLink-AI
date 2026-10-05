@@ -46,6 +46,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   String? _assignmentId;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
   bool _realtimeConnected = false;
+  bool _realtimeSyncing = false;
   Timer? _locationTimer;
   bool _locationUpdating = false;
 
@@ -121,61 +122,66 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     final service = ref.read(realtimeServiceProvider);
     if (!mounted) return;
     setState(() => _realtimeConnected = service.isConnected);
-
-    _realtimeSubscription = service.events.listen((event) {
-      if (!mounted) return;
-
-      switch (event.event) {
-        case 'connected':
+    _realtimeSubscription = service.events.listen(
+      (event) {
+        if (!mounted) return;
+        if (event.event == 'connected') {
           setState(() => _realtimeConnected = true);
-          unawaited(_loadAssignment());
-          break;
-        case 'dispatch.assignment':
-          _applyAssignmentEvent(event.data);
-          break;
-        case 'responder.assignment_status_changed':
-          _applyAssignmentStatusEvent(event.data);
-          break;
-      }
-    });
+          unawaited(_refreshAssignmentAfterReconnect());
+          return;
+        }
+        if (event.event != 'dispatch.assignment') return;
+
+        final assignmentId = event.data['assignment_id']?.toString();
+        if (assignmentId == null || assignmentId.isEmpty) return;
+
+        setState(() {
+          _realtimeConnected = true;
+          _assignmentId = assignmentId;
+          _assignment = {
+            'id': assignmentId,
+            'emergency_id': event.data['emergency_id'],
+            'status': event.data['status'] ?? 'Assigned',
+            'distance_km': event.data['distance_km'],
+            'eta_minutes': event.data['eta_minutes'],
+          };
+          _error = null;
+        });
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() {
+          _realtimeConnected = false;
+          _error = 'Live dispatch connection was interrupted.';
+        });
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() => _realtimeConnected = false);
+      },
+    );
   }
 
-  void _applyAssignmentEvent(Map<String, dynamic> data) {
-    final assignmentId = data['assignment_id']?.toString();
-    if (assignmentId == null || assignmentId.isEmpty) return;
-
-    setState(() {
-      _realtimeConnected = true;
-      _assignmentId = assignmentId;
-      _assignment = {
-        ...?_assignment,
-        'id': assignmentId,
-        'emergency_id': data['emergency_id'],
-        'status': data['status'] ?? 'Assigned',
-        'distance_km': data['distance_km'],
-        'eta_minutes': data['eta_minutes'],
-      };
-    });
-  }
-
-  void _applyAssignmentStatusEvent(Map<String, dynamic> data) {
-    final assignmentId = data['assignment_id']?.toString();
-    if (assignmentId == null || assignmentId.isEmpty) return;
-    if (_assignmentId != null && _assignmentId != assignmentId) return;
-
-    setState(() {
-      _assignmentId = assignmentId;
-      _assignment = {
-        ...?_assignment,
-        'id': assignmentId,
-        if (data['emergency_id'] != null) 'emergency_id': data['emergency_id'],
-        if (data['status'] != null) 'status': data['status'],
-        if (data['notes'] != null) 'notes': data['notes'],
-      };
-    });
-
-    if (data['status'] == 'Completed' || data['status'] == 'Cancelled') {
-      unawaited(_loadAssignment());
+  Future<void> _refreshAssignmentAfterReconnect() async {
+    if (_realtimeSyncing || !mounted) return;
+    _realtimeSyncing = true;
+    try {
+      final assignment = await ref.read(responderApiProvider).getActiveAssignment();
+      if (!mounted) return;
+      setState(() {
+        _assignment = assignment;
+        _assignmentId = assignment?['id']?.toString();
+        _error = null;
+      });
+    } on DioException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.response?.data is Map
+            ? error.response?.data['detail']?.toString()
+            : 'Unable to synchronize active assignment.';
+      });
+    } finally {
+      _realtimeSyncing = false;
     }
   }
 
@@ -317,7 +323,9 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
             Card(child: ListTile(
               leading: Icon(_realtimeConnected ? Icons.wifi : Icons.wifi_off),
               title: Text(_realtimeConnected ? 'Live dispatch channel' : 'Dispatch channel'),
-              subtitle: Text(_realtimeConnected ? 'Waiting for new assignments.' : 'Connecting to dispatch updates...'),
+              subtitle: Text(_realtimeConnected
+                  ? (_realtimeSyncing ? 'Synchronizing active assignment...' : 'Waiting for new assignments.')
+                  : 'Connecting to dispatch updates...'),
             )),
             const SizedBox(height: 8),
             if (_error != null) Card(child: ListTile(
