@@ -57,14 +57,16 @@ class _HospitalHomePageState extends ConsumerState<HospitalHomePage> {
       }
       if (eventType != 'dispatch.hospital_incoming') return;
       final data = event.data;
+      final emergencyId = data['emergency_id']?.toString() ?? 'Unknown';
       setState(() {
         _connected = true;
-        _incoming.insert(
-          0,
-          'Incoming emergency: ${data['emergency_id'] ?? 'Unknown'}',
+        _incoming.removeWhere(
+          (item) => item == 'Incoming emergency: $emergencyId',
         );
+        _incoming.insert(0, 'Incoming emergency: $emergencyId');
         if (_incoming.length > 5) _incoming.removeLast();
       });
+      unawaited(_load());
     });
   }
 
