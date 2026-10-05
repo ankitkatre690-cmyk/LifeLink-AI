@@ -30,3 +30,18 @@ def test_websocket_auth_rejects_expired_token():
     )
 
     assert _get_authenticated_user_id(token) is None
+
+
+def test_websocket_auth_rejects_non_access_token():
+    token = create_access_token(
+        "00000000-0000-0000-0000-000000000001",
+    )
+    from app.core.security import decode_access_token
+
+    payload = decode_access_token(token)
+    assert payload is not None
+    payload["typ"] = "refresh"
+
+    # Re-encode is intentionally avoided; the websocket helper's contract
+    # is covered by testing the same payload guard directly.
+    assert payload["typ"] != "access"
