@@ -121,66 +121,62 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     final service = ref.read(realtimeServiceProvider);
     if (!mounted) return;
     setState(() => _realtimeConnected = service.isConnected);
-    _realtimeSubscription = service.events.listen(
-      (event) {
-        if (!mounted) return;
-        final type = event.event;
-        final data = event.data;
 
-        if (type == 'connected') {
-          final wasDisconnected = !_realtimeConnected;
+    _realtimeSubscription = service.events.listen((event) {
+      if (!mounted) return;
+
+      switch (event.event) {
+        case 'connected':
           setState(() => _realtimeConnected = true);
-          if (wasDisconnected) {
-            unawaited(_load());
-            unawaited(_updateLocation());
-          }
-          return;
-        }
+          unawaited(_loadAssignment());
+          break;
+        case 'dispatch.assignment':
+          _applyAssignmentEvent(event.data);
+          break;
+        case 'responder.assignment_status_changed':
+          _applyAssignmentStatusEvent(event.data);
+          break;
+      }
+    });
+  }
 
-        if (type == 'responder.assignment_status_changed') {
-          final assignmentId = data['assignment_id']?.toString();
-          if (assignmentId == null || assignmentId.isEmpty) return;
-          if (_assignmentId != null && assignmentId != _assignmentId) return;
+  void _applyAssignmentEvent(Map<String, dynamic> data) {
+    final assignmentId = data['assignment_id']?.toString();
+    if (assignmentId == null || assignmentId.isEmpty) return;
 
-          setState(() {
-            _realtimeConnected = true;
-            _assignmentId = assignmentId;
-            _assignment = {
-              ...?_assignment,
-              'id': assignmentId,
-              'emergency_id': data['emergency_id'],
-              'status': data['status'],
-              'notes': data['notes'],
-            };
-          });
-          return;
-        }
+    setState(() {
+      _realtimeConnected = true;
+      _assignmentId = assignmentId;
+      _assignment = {
+        ...?_assignment,
+        'id': assignmentId,
+        'emergency_id': data['emergency_id'],
+        'status': data['status'] ?? 'Assigned',
+        'distance_km': data['distance_km'],
+        'eta_minutes': data['eta_minutes'],
+      };
+    });
+  }
 
-        if (type != 'dispatch.assignment') return;
-        final assignmentId = data['assignment_id']?.toString();
-        if (assignmentId == null || assignmentId.isEmpty) return;
+  void _applyAssignmentStatusEvent(Map<String, dynamic> data) {
+    final assignmentId = data['assignment_id']?.toString();
+    if (assignmentId == null || assignmentId.isEmpty) return;
+    if (_assignmentId != null && _assignmentId != assignmentId) return;
 
-        setState(() {
-          _realtimeConnected = true;
-          _assignmentId = assignmentId;
-          _assignment = {
-            'id': assignmentId,
-            'emergency_id': data['emergency_id'],
-            'status': data['status'] ?? 'Assigned',
-            'distance_km': data['distance_km'],
-            'eta_minutes': data['eta_minutes'],
-          };
-        });
-      },
-      onError: (_, __) {
-        if (!mounted) return;
-        setState(() => _realtimeConnected = false);
-      },
-      onDone: () {
-        if (!mounted) return;
-        setState(() => _realtimeConnected = false);
-      },
-    );
+    setState(() {
+      _assignmentId = assignmentId;
+      _assignment = {
+        ...?_assignment,
+        'id': assignmentId,
+        if (data['emergency_id'] != null) 'emergency_id': data['emergency_id'],
+        if (data['status'] != null) 'status': data['status'],
+        if (data['notes'] != null) 'notes': data['notes'],
+      };
+    });
+
+    if (data['status'] == 'Completed' || data['status'] == 'Cancelled') {
+      unawaited(_loadAssignment());
+    }
   }
 
   Future<void> _changeStatus() async {
