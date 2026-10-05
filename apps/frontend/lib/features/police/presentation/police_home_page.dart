@@ -1,6 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+
+import '../../../core/realtime/realtime_provider.dart';
+import '../../../core/realtime/websocket_service.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
@@ -22,11 +26,16 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
   String? _error;
   List<Map<String, dynamic>> _emergencies = [];
   Map<String, dynamic>? _selectedCase;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
+  bool _realtimeConnected = false;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(_load);
+    Future.microtask(() async {
+      await _load();
+      _connectRealtime();
+    });
   }
 
   Future<void> _load() async {
@@ -47,6 +56,27 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+
+  void _connectRealtime() {
+    final service = ref.read(realtimeServiceProvider);
+    if (!mounted) return;
+    setState(() => _realtimeConnected = service.isConnected);
+    _realtimeSubscription = service.events.listen((event) {
+      if (!mounted) return;
+      if (event.event == 'connected') {
+        setState(() => _realtimeConnected = true);
+        return;
+      }
+      if (event.event != 'emergency.created' &&
+          event.event != 'emergency.status_changed' &&
+          event.event != 'dispatch.assigned') {
+        return;
+      }
+      setState(() => _realtimeConnected = true);
+      unawaited(_load());
+    });
   }
 
   Future<void> _openEmergency(Map<String, dynamic> emergency) async {
@@ -156,6 +186,12 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
   }
 
   @override
+  void dispose() {
+    _realtimeSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     return Scaffold(
@@ -183,6 +219,13 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
             ),
             Text('Role: ${auth.role ?? 'Police'}'),
             const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: Icon(_realtimeConnected ? Icons.wifi : Icons.wifi_off),
+                title: Text(_realtimeConnected ? 'Live emergency feed' : 'Emergency feed'),
+                subtitle: Text(_realtimeConnected ? 'Active emergency changes arrive automatically.' : 'Connecting to live emergency updates...'),
+              ),
+            ),
             if (_error != null)
               Card(
                 child: ListTile(
