@@ -49,6 +49,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
   bool _realtimeSyncing = false;
   Timer? _locationTimer;
   bool _locationUpdating = false;
+  bool _assignmentSyncing = false;
 
   @override
   void initState() {
