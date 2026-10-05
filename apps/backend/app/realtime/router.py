@@ -16,7 +16,7 @@ def _get_authenticated_user_id(token: str | None) -> UUID | None:
         return None
 
     payload = decode_access_token(token)
-    if payload is None:
+    if payload is None or payload.get("typ") != "access":
         return None
 
     try:
