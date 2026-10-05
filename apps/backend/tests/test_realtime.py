@@ -1,4 +1,5 @@
 from datetime import timedelta
+from unittest.mock import patch
 
 from app.core.security import create_access_token, decode_access_token
 from app.realtime.router import _get_authenticated_user_id
@@ -33,15 +34,11 @@ def test_websocket_auth_rejects_expired_token():
 
 
 def test_websocket_auth_rejects_non_access_token():
-    token = create_access_token(
-        "00000000-0000-0000-0000-000000000001",
-    )
-    from app.core.security import decode_access_token
-
-    payload = decode_access_token(token)
-    assert payload is not None
-    payload["typ"] = "refresh"
-
-    # Re-encode is intentionally avoided; the websocket helper's contract
-    # is covered by testing the same payload guard directly.
-    assert payload["typ"] != "access"
+    with patch(
+        "app.realtime.router.decode_access_token",
+        return_value={
+            "sub": "00000000-0000-0000-0000-000000000001",
+            "typ": "refresh",
+        },
+    ):
+        assert _get_authenticated_user_id("refresh-token") is None
