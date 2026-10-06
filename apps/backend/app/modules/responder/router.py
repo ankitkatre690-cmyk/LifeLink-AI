@@ -244,6 +244,10 @@ async def update_assignment(
             assignment.emergency.citizen_id,
             event,
         )
+        await connection_manager.send_to_user(
+            assignment.responder.user_id,
+            event,
+        )
         for user_id in FamilyRepository(db).get_member_user_ids_for_creator(
             assignment.emergency.citizen_id
         ):
