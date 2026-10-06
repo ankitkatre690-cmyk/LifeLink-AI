@@ -130,6 +130,26 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
           unawaited(_refreshAssignmentAfterReconnect());
           return;
         }
+        if (event.event == 'responder.assignment_status_changed') {
+          final assignmentId = event.data['assignment_id']?.toString();
+          final status = event.data['status']?.toString();
+          if (assignmentId == null || assignmentId.isEmpty || status == null) {
+            return;
+          }
+          setState(() {
+            _realtimeConnected = true;
+            _assignmentId = assignmentId;
+            _assignment = {
+              ...?_assignment,
+              'id': assignmentId,
+              'emergency_id': event.data['emergency_id'] ?? _assignment?['emergency_id'],
+              'status': status,
+              'notes': event.data['notes'],
+            };
+            _error = null;
+          });
+          return;
+        }
         if (event.event != 'dispatch.assignment') return;
 
         final assignmentId = event.data['assignment_id']?.toString();
