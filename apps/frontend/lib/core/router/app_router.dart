@@ -15,6 +15,10 @@ GoRouter buildAppRouter(AuthState auth) {
       if (auth.isLoading) return null;
       if (!auth.isAuthenticated && !isLogin) return '/login';
       if (auth.isAuthenticated && isLogin) return '/home';
+      final isCitizenEmergencyRoute =
+          state.matchedLocation == '/citizen/emergency-sos' ||
+          state.matchedLocation.startsWith('/citizen/emergency/');
+      if (isCitizenEmergencyRoute && auth.role != 'Citizen') return '/home';
       return null;
     },
     routes: [
