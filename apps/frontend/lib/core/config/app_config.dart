@@ -1,8 +1,7 @@
 class AppConfig {
   AppConfig._();
 
-  /// Override with:
-  /// Example: `flutter run --dart-define=LIFELINK_API_URL=http://host:8000/api/v1`
+  /// Override with a `flutter run --dart-define` value.
   static const apiBaseUrl = String.fromEnvironment(
     'LIFELINK_API_URL',
     defaultValue: 'http://10.0.2.2:8000/api/v1',
