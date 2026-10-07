@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/notifications/push_notification_service.dart';
+import '../../notifications/presentation/notification_inbox_page.dart';
 
 class CitizenHomePage extends ConsumerStatefulWidget {
   const CitizenHomePage({super.key});
@@ -57,6 +58,11 @@ class _CitizenHomePageState extends ConsumerState<CitizenHomePage> {
       appBar: AppBar(
         title: const Text('LifeLink AI'),
         actions: [
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationInboxPage())),
+            icon: const Icon(Icons.notifications_outlined),
+          ),
           IconButton(
             tooltip: 'Sign out',
             onPressed: () => ref.read(authProvider.notifier).logout(),
