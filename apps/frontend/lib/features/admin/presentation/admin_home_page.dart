@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../../notifications/presentation/notification_inbox_page.dart';
 import '../data/admin_api.dart';
 
 final adminApiProvider = Provider<AdminApi>((ref) => AdminApi(ref.watch(apiClientProvider)));
@@ -70,6 +71,11 @@ class _AdminHomePageState extends ConsumerState<AdminHomePage> {
         actions: [
           IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh)),
           IconButton(onPressed: () => ref.read(authProvider.notifier).logout(), icon: const Icon(Icons.logout)),
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationInboxPage())),
+            icon: const Icon(Icons.notifications_outlined),
+          ),
         ],
       ),
       body: RefreshIndicator(
