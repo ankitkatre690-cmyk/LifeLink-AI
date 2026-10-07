@@ -31,6 +31,21 @@ final responderApiProvider = Provider<ResponderApi>(
   (ref) => ResponderApi(ref.watch(apiClientProvider)),
 );
 
+Map<String, dynamic>? responderAssignmentFromRealtimeEvent(
+  RealtimeEvent event,
+) {
+  if (event.event != 'dispatch.assignment') return null;
+  final assignmentId = event.data['assignment_id']?.toString();
+  if (assignmentId == null || assignmentId.isEmpty) return null;
+  return {
+    'id': assignmentId,
+    'emergency_id': event.data['emergency_id'],
+    'status': event.data['status'] ?? 'Assigned',
+    'distance_km': event.data['distance_km'],
+    'eta_minutes': event.data['eta_minutes'],
+  };
+}
+
 class ResponderHomePage extends ConsumerStatefulWidget {
   const ResponderHomePage({super.key});
 
@@ -102,7 +117,10 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
         position.longitude,
       );
       if (!mounted) return;
-      setState(() => _profile = updated);
+      setState(() {
+        _profile = updated;
+        _error = null;
+      });
     } on LocationException catch (error) {
       if (mounted && _profile != null) {
         setState(() => _error = error.message);
@@ -239,6 +257,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (id == null || id.isEmpty) return;
     try {
       _assignment = await ref.read(responderApiProvider).getAssignment(id);
+      _error = null;
       if (mounted) {
         setState(() {});
       }
@@ -277,6 +296,7 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
     if (status == null) return;
     try {
       _assignment = await ref.read(responderApiProvider).updateAssignment(id, status);
+      _error = null;
       if (mounted) {
         setState(() {});
       }
