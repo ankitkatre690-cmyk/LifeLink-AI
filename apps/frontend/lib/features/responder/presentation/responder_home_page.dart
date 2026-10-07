@@ -11,6 +11,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/realtime/realtime_provider.dart';
 import '../../../core/realtime/websocket_service.dart';
 import '../data/responder_api.dart';
+import '../../notifications/presentation/notification_inbox_page.dart';
 
 List<String> nextResponderAssignmentStatuses(String current) {
   switch (current) {
@@ -350,6 +351,11 @@ class _ResponderHomePageState extends ConsumerState<ResponderHomePage> {
         actions: [
           IconButton(onPressed: _loading ? null : _load, icon: const Icon(Icons.refresh)),
           IconButton(onPressed: () => ref.read(authProvider.notifier).logout(), icon: const Icon(Icons.logout)),
+          IconButton(
+            tooltip: 'Notifications',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationInboxPage())),
+            icon: const Icon(Icons.notifications_outlined),
+          ),
         ],
       ),
       body: RefreshIndicator(
