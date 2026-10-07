@@ -46,6 +46,7 @@ async def publish_dispatch_events(dispatch, family_user_ids=()):
                 "dispatch_id": str(dispatch.id),
                 "emergency_id": str(dispatch.emergency_id),
                 "hospital_id": str(dispatch.hospital_id),
+                "resource_id": str(dispatch.resource_id) if dispatch.resource_id else None,
                 "status": dispatch.dispatch_status,
             }),
         )
