@@ -6,6 +6,7 @@ import '../../features/auth/presentation/login_page.dart';
 import '../../features/citizen/presentation/emergency_sos_page.dart';
 import '../../features/citizen/presentation/emergency_tracking_page.dart';
 import '../../features/role/presentation/role_router_page.dart';
+import '../../features/notifications/presentation/notification_inbox_page.dart';
 
 GoRouter buildAppRouter(AuthState auth) {
   return GoRouter(
@@ -23,6 +24,10 @@ GoRouter buildAppRouter(AuthState auth) {
     },
     routes: [
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationInboxPage(),
+      ),
       GoRoute(
         path: '/home',
         builder: (context, state) => RoleRouterPage(role: auth.role ?? ''),
