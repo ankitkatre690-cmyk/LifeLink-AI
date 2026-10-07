@@ -8,7 +8,8 @@ from app.modules.police.schemas import PoliceCaseCreate, PoliceCaseUpdate
 
 
 ALLOWED_CASE_TRANSITIONS = {
-    "Open": {"Closed", "Cancelled"},
+    "Open": {"InProgress", "Closed", "Cancelled"},
+    "InProgress": {"Closed", "Cancelled"},
     "Closed": set(),
     "Cancelled": set(),
 }
