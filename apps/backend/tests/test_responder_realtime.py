@@ -31,12 +31,15 @@ def test_responder_location_route_publishes_realtime_event():
     fake_repository = SimpleNamespace(
         get_active_assignments_for_responder=lambda profile_id: [assignment],
     )
+    fake_family_repository = SimpleNamespace(
+        get_member_user_ids_for_creator=lambda creator_id: [],
+    )
     user = SimpleNamespace(
         id=user_id,
         role=SimpleNamespace(name="Responder"),
     )
 
-    with patch.object(router, "_service", return_value=fake_service),          patch.object(router, "ResponderRepository", return_value=fake_repository),          patch.object(
+    with patch.object(router, "_service", return_value=fake_service),          patch.object(router, "ResponderRepository", return_value=fake_repository),          patch.object(router, "FamilyRepository", return_value=fake_family_repository),          patch.object(
              router.connection_manager,
              "send_to_user",
              new_callable=AsyncMock,
