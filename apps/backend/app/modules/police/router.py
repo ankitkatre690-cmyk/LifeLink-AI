@@ -17,6 +17,8 @@ from app.modules.dispatch.schemas import DispatchCreate, DispatchResponse
 from app.modules.dispatch.service import DispatchService
 from app.modules.family.repository import FamilyRepository
 from app.modules.dispatch.realtime import publish_dispatch_events
+from app.realtime.events import build_event
+from app.realtime.manager import connection_manager
 from app.modules.police.exceptions import PoliceCaseExists, PoliceCaseNotFound
 from app.modules.emergency.exceptions import EmergencyNotFound
 from app.modules.police.repository import PoliceRepository
@@ -47,7 +49,7 @@ def list_active_emergencies(
 
 
 @router.post("/cases/{emergency_id}", response_model=PoliceCaseResponse, status_code=status.HTTP_201_CREATED)
-def create_case(
+async def create_case(
     emergency_id: UUID,
     request: PoliceCaseCreate,
     db: Session = Depends(get_db),
@@ -55,9 +57,18 @@ def create_case(
 ):
     _ensure_police(current_user)
     try:
-        return PoliceService(PoliceRepository(db)).create_case(
+        case = PoliceService(PoliceRepository(db)).create_case(
             emergency_id, current_user.id, request
         )
+        await connection_manager.send_to_user(
+            current_user.id,
+            build_event("police.case_created", {
+                "case_id": str(case.id),
+                "emergency_id": str(case.emergency_id),
+                "case_status": case.case_status,
+            }),
+        )
+        return case
     except PoliceCaseExists:
         raise HTTPException(409, "A police case already exists for this emergency.")
     except EmergencyNotFound:
@@ -94,12 +105,21 @@ def update_case(
     _ensure_police(current_user)
     try:
         role = current_user.role.name if current_user.role else None
-        return PoliceService(PoliceRepository(db)).update_case(
+        case = PoliceService(PoliceRepository(db)).update_case(
             case_id,
             request,
             current_user.id,
             role,
         )
+        await connection_manager.send_to_user(
+            current_user.id,
+            build_event("police.case_status_changed", {
+                "case_id": str(case.id),
+                "emergency_id": str(case.emergency_id),
+                "case_status": case.case_status,
+            }),
+        )
+        return case
     except PoliceCaseNotFound:
         raise HTTPException(404, "Police case not found.")
     except PermissionError as exc:
