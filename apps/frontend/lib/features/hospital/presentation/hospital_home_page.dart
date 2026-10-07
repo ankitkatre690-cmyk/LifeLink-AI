@@ -58,12 +58,16 @@ class _HospitalHomePageState extends ConsumerState<HospitalHomePage> {
       if (eventType != 'dispatch.hospital_incoming') return;
       final data = event.data;
       final emergencyId = data['emergency_id']?.toString() ?? 'Unknown';
+      final resourceId = data['resource_id']?.toString();
+      final message = resourceId == null
+          ? 'Incoming emergency: $emergencyId'
+          : 'Incoming emergency: $emergencyId • Resource reserved: $resourceId';
       setState(() {
         _connected = true;
         _incoming.removeWhere(
-          (item) => item == 'Incoming emergency: $emergencyId',
+          (item) => item.startsWith('Incoming emergency: $emergencyId'),
         );
-        _incoming.insert(0, 'Incoming emergency: $emergencyId');
+        _incoming.insert(0, message);
         if (_incoming.length > 5) _incoming.removeLast();
       });
       unawaited(_load());
