@@ -69,6 +69,15 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
         setState(() => _realtimeConnected = true);
         return;
       }
+      if (event.event == 'police.case_created' ||
+          event.event == 'police.case_status_changed') {
+        final caseId = event.data['case_id']?.toString();
+        if (caseId != null && caseId == _selectedCase?['id']?.toString()) {
+          unawaited(_refreshSelectedCase(caseId));
+        }
+        setState(() => _realtimeConnected = true);
+        return;
+      }
       if (event.event != 'emergency.created' &&
           event.event != 'emergency.status_changed' &&
           event.event != 'dispatch.assigned') {
@@ -124,6 +133,16 @@ class _PoliceHomePageState extends ConsumerState<PoliceHomePage> {
       }
     } finally {
       notesController.dispose();
+    }
+  }
+
+  Future<void> _refreshSelectedCase(String caseId) async {
+    try {
+      final refreshed = await ref.read(policeApiProvider).getCase(caseId);
+      if (!mounted) return;
+      setState(() => _selectedCase = refreshed);
+    } catch (_) {
+      // The next manual refresh remains authoritative if the case is unavailable.
     }
   }
 
