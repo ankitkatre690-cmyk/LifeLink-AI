@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
-import '../../notifications/presentation/notification_inbox_page.dart';
 import '../../../core/realtime/realtime_provider.dart';
 import '../../../core/realtime/websocket_service.dart';
 import '../data/family_api.dart';
