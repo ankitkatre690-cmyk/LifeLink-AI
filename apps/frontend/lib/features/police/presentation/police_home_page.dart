@@ -8,7 +8,6 @@ import '../../../core/realtime/websocket_service.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
-import '../../notifications/presentation/notification_inbox_page.dart';
 import '../data/police_api.dart';
 
 final policeApiProvider = Provider<PoliceApi>(
