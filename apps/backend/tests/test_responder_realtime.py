@@ -126,9 +126,11 @@ def test_responder_assignment_status_event_is_not_duplicated():
         )
 
     assert response is assignment
-    send_to_user.assert_awaited_once()
-    target_user, event = send_to_user.await_args.args
-    assert target_user == citizen_id
-    assert event["event"] == "responder.assignment_status_changed"
-    assert event["data"]["assignment_id"] == str(assignment_id)
-    assert event["data"]["status"] == "Accepted"
+    assert send_to_user.await_count == 2
+    targets = [call.args[0] for call in send_to_user.await_args_list]
+    assert targets.count(citizen_id) == 1
+    assert targets.count(user_id) == 1
+    events = [call.args[1] for call in send_to_user.await_args_list]
+    assert all(event["event"] == "responder.assignment_status_changed" for event in events)
+    assert all(event["data"]["assignment_id"] == str(assignment_id) for event in events)
+    assert all(event["data"]["status"] == "Accepted" for event in events)
