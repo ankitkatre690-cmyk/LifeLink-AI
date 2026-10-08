@@ -252,10 +252,6 @@ async def update_assignment(
             assignment.emergency.citizen_id
         ):
             await connection_manager.send_to_user(user_id, event)
-        await connection_manager.send_to_user(
-            assignment.responder.user_id,
-            event,
-        )
         return assignment
     except InvalidResponderRole:
         raise HTTPException(403, "Current user does not have Responder role.")
