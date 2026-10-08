@@ -96,7 +96,7 @@ def get_case(
 
 
 @router.patch("/cases/{case_id}", response_model=PoliceCaseResponse)
-def update_case(
+async def update_case(
     case_id: UUID,
     request: PoliceCaseUpdate,
     db: Session = Depends(get_db),
