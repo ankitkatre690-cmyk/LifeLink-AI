@@ -78,7 +78,7 @@ def test_responder_assignment_rejects_unavailable_responder():
 
 
 def test_police_case_lifecycle_has_terminal_states():
-    assert ALLOWED_CASE_TRANSITIONS["Open"] == {"Closed", "Cancelled"}
+    assert ALLOWED_CASE_TRANSITIONS["Open"] == {"InProgress", "Closed", "Cancelled"}
     assert ALLOWED_CASE_TRANSITIONS["Closed"] == set()
     assert ALLOWED_CASE_TRANSITIONS["Cancelled"] == set()
 
