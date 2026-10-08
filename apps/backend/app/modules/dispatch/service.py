@@ -146,7 +146,7 @@ class DispatchService:
         try:
             dispatch.dispatch_status = status
             assignment.status = status
-            emergency.status = "InProgress" if status in ACTIVE_DISPATCH_STATUSES else status
+            emergency.status = status
 
             if status in FINAL_DISPATCH_STATUSES and resource is not None:
                 resource.available_count = min(resource.total_count, resource.available_count + 1)
