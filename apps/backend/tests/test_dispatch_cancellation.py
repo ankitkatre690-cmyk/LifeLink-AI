@@ -59,3 +59,19 @@ def test_cancelled_dispatch_cannot_be_reopened():
 
     assert repo.committed is False
     assert repo.logs == []
+
+
+
+def test_dispatch_status_keeps_emergency_assignment_and_dispatch_in_sync():
+    repo = FakeRepository()
+    repo.dispatch.dispatch_status = "Accepted"
+    repo.assignment.status = "Accepted"
+    repo.emergency.status = "Accepted"
+    service = DispatchService(repo)
+
+    service.update_dispatch_status(repo.dispatch.id, "EnRoute")
+
+    assert repo.dispatch.dispatch_status == "EnRoute"
+    assert repo.assignment.status == "EnRoute"
+    assert repo.emergency.status == "EnRoute"
+    assert repo.committed is True
