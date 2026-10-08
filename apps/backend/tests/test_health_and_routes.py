@@ -174,6 +174,7 @@ def test_dispatch_realtime_accepts_only_explicit_family_recipients():
         family_user_id = uuid.uuid4()
         dispatch = type("Dispatch", (), {
             "id": uuid.uuid4(), "emergency_id": uuid.uuid4(), "hospital_id": uuid.uuid4(),
+            "resource_id": uuid.uuid4(),
             "distance_km": 1.0, "eta_minutes": 2, "dispatch_status": "Assigned",
             "emergency": type("Emergency", (), {"citizen_id": citizen_id})(),
             "assignment": type("Assignment", (), {
