@@ -119,6 +119,28 @@ def test_end_to_end_emergency_dispatch_responder_hospital_flow(client):
         emergency_id = emergency["id"]
         assert emergency["status"] == "Pending"
 
+        # Operational endpoints must enforce role boundaries at the HTTP layer,
+        # not merely inside service-level unit tests.
+        forbidden_dispatch = client.post(
+            "/api/v1/dispatch",
+            json={"emergency_id": emergency_id},
+            headers=citizen_headers,
+        )
+        assert forbidden_dispatch.status_code == 403, forbidden_dispatch.text
+
+        forbidden_admin_dashboard = client.get(
+            "/api/v1/admin/dashboard",
+            headers=citizen_headers,
+        )
+        assert forbidden_admin_dashboard.status_code == 403, forbidden_admin_dashboard.text
+
+        forbidden_responder_dispatch = client.post(
+            "/api/v1/dispatch",
+            json={"emergency_id": emergency_id},
+            headers=responder_headers,
+        )
+        assert forbidden_responder_dispatch.status_code == 403, forbidden_responder_dispatch.text
+
         dispatch_response = client.post(
             "/api/v1/dispatch",
             json={"emergency_id": emergency_id},
