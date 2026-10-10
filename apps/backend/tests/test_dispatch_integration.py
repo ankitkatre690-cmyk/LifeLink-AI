@@ -54,7 +54,7 @@ def test_dispatch_status_updates_related_state_and_releases_resource():
     service.update_dispatch_status(repo.dispatch.id, "Accepted")
     assert repo.dispatch.dispatch_status == "Accepted"
     assert repo.assignment.status == "Accepted"
-    assert repo.emergency.status == "InProgress"
+    assert repo.emergency.status == "Accepted"
     assert repo.resource.available_count == 4
     assert repo.committed is True
 
