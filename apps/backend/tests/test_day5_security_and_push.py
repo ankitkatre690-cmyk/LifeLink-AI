@@ -113,3 +113,33 @@ def test_fcm_provider_requires_credentials_when_enabled():
     with patch("app.notifications.push.settings.FIREBASE_CREDENTIALS_JSON", None):
         with pytest.raises(RuntimeError, match="FIREBASE_CREDENTIALS_JSON"):
             provider.send(message, ["token"])
+
+
+def test_push_delivery_failure_does_not_block_in_app_notification():
+    recipient_id = uuid.uuid4()
+    created = []
+
+    class Repository:
+        def create(self, notification):
+            created.append(notification)
+            return notification
+
+        def list_active_device_tokens(self, user_id):
+            return [SimpleNamespace(token="registered-token")]
+
+    service = NotificationService(Repository())
+    with patch(
+        "app.modules.notifications.service.push_provider.send",
+        side_effect=RuntimeError("FCM unavailable"),
+    ):
+        result = service.create_in_app(
+            recipient_id=recipient_id,
+            title="Emergency update",
+            message="Responder assigned",
+            notification_type="dispatch.assignment",
+        )
+
+    assert result is created[0]
+    assert result.recipient_id == recipient_id
+    assert result.channel == "InApp"
+    assert result.is_read is False
