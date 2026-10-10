@@ -1,4 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../config/app_config.dart';
 
 class ApiClient {
   ApiClient({
@@ -7,7 +10,7 @@ class ApiClient {
   }) : _dio = dio ??
             Dio(
               BaseOptions(
-                baseUrl: baseUrl ?? 'http://10.0.2.2:8000/api/v1',
+                baseUrl: baseUrl ?? AppConfig.apiBaseUrl,
                 connectTimeout: const Duration(seconds: 10),
                 receiveTimeout: const Duration(seconds: 20),
                 headers: const {'Accept': 'application/json'},
@@ -26,3 +29,5 @@ class ApiClient {
     _dio.options.headers.remove('Authorization');
   }
 }
+
+final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
