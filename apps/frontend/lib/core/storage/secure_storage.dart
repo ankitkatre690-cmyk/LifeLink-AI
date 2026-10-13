@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStorage {
@@ -26,9 +27,15 @@ class SecureStorage {
   Future<String?> readDeviceTokenId() =>
       _storage.read(key: _deviceTokenIdKey);
 
+  Future<void> clearDeviceTokenId() =>
+      _storage.delete(key: _deviceTokenIdKey);
+
   Future<void> clearSession() async {
     await _storage.delete(key: _accessTokenKey);
     await _storage.delete(key: _roleKey);
     await _storage.delete(key: _deviceTokenIdKey);
   }
 }
+
+final secureStorageProvider =
+    Provider<SecureStorage>((ref) => const SecureStorage());

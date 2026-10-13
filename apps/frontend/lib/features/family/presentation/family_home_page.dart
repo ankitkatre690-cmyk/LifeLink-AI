@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/realtime/realtime_client.dart';
-import '../../../core/storage/secure_storage.dart';
+import '../../../core/realtime/realtime_provider.dart';
+import '../../../core/realtime/websocket_service.dart';
 import '../data/family_api.dart';
 
 final familyApiProvider = Provider<FamilyApi>(
@@ -26,8 +26,7 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
   String? _error;
   Map<String, dynamic>? _family;
   List<Map<String, dynamic>> _members = [];
-  RealtimeClient? _realtime;
-  StreamSubscription<Map<String, dynamic>>? _realtimeSubscription;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
   final List<String> _emergencyUpdates = <String>[];
   bool _realtimeConnected = false;
 
@@ -64,26 +63,19 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
   }
 
   Future<void> _connectRealtime() async {
-    final token = await const SecureStorage().readAccessToken();
-    if (!mounted || token == null || token.isEmpty) return;
-
-    final client = RealtimeClient(
-      baseUrl: ref.read(apiClientProvider).dio.options.baseUrl,
-      accessToken: token,
-    );
-    _realtime = client;
-    client.connect();
-    _realtimeSubscription = client.events.listen((event) {
+    final service = ref.read(realtimeServiceProvider);
+    if (!mounted) return;
+    setState(() => _realtimeConnected = service.isConnected);
+    _realtimeSubscription = service.events.listen((event) {
       if (!mounted) return;
-      final type = event['event']?.toString() ?? '';
+      final type = event.event;
       if (type == 'connected') {
         setState(() => _realtimeConnected = true);
         return;
       }
-      final data = event['data'];
-      if (data is! Map) return;
       if (type != 'emergency.created' && type != 'emergency.status_changed') return;
 
+      final data = event.data;
       final status = data['status']?.toString() ?? 'Updated';
       final emergencyId = data['emergency_id']?.toString() ?? 'Unknown';
       setState(() {
@@ -189,7 +181,6 @@ class _FamilyHomePageState extends ConsumerState<FamilyHomePage> {
   @override
   void dispose() {
     _realtimeSubscription?.cancel();
-    _realtime?.dispose();
     super.dispose();
   }
 

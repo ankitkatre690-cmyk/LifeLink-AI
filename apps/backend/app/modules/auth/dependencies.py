@@ -37,3 +37,17 @@ def get_current_user(
         )
 
     return user
+
+
+def require_roles(*allowed_roles: str):
+    """Return a FastAPI dependency that enforces the authenticated user's role."""
+
+    def _require_role(user: User = Depends(get_current_user)) -> User:
+        if user.role is None or user.role.name not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not authorized to access this resource.",
+            )
+        return user
+
+    return _require_role

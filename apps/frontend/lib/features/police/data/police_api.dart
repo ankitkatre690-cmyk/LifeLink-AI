@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 
 class PoliceApi {
@@ -42,7 +41,7 @@ class PoliceApi {
 
   Future<Map<String, dynamic>> dispatch(String emergencyId) async {
     final response = await _client.dio.post(
-      '/police/dispatch',
+      '/dispatch',
       data: {'emergency_id': emergencyId},
     );
     return Map<String, dynamic>.from(response.data as Map);

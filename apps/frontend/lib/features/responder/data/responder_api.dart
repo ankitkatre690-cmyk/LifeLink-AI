@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 
 class ResponderApi {
@@ -23,6 +22,12 @@ class ResponderApi {
       '/responders/me/location',
       data: {'latitude': latitude, 'longitude': longitude},
     );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>?> getActiveAssignment() async {
+    final response = await _client.dio.get('/responders/assignments/active');
+    if (response.data == null) return null;
     return Map<String, dynamic>.from(response.data as Map);
   }
 

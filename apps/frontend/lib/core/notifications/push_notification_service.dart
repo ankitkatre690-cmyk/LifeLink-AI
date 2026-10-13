@@ -75,6 +75,15 @@ class PushNotificationService {
     }
   }
 
+  Future<void> reset() async {
+    await _tokenSubscription?.cancel();
+    await _foregroundSubscription?.cancel();
+    _tokenSubscription = null;
+    _foregroundSubscription = null;
+    _messaging = null;
+    _initialized = false;
+  }
+
   Future<void> unregisterCurrentToken() async {
     final id = await _storage.readDeviceTokenId();
     if (id == null || id.isEmpty) return;

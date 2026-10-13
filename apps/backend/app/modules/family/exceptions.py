@@ -12,3 +12,11 @@ class FamilyMemberAlreadyExists(Exception):
 
 class FamilyMemberNotFound(Exception):
     pass
+
+
+class FamilyMemberUserNotFound(Exception):
+    pass
+
+
+class FamilySelfMembershipNotAllowed(Exception):
+    pass

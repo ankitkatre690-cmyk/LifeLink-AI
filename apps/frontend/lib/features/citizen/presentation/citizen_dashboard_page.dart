@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/location/location_service.dart';
 import '../data/emergency_repository.dart';
 

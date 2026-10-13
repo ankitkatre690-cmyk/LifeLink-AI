@@ -1,0 +1,55 @@
+name: Flutter E2E
+
+on:
+  workflow_dispatch:
+
+jobs:
+  emergency-e2e:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: apps/frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate platform scaffolding
+        run: flutter create .
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run authenticated emergency E2E
+        env:
+          LIFELINK_TEST_BASE_URL: ${{ secrets.LIFELINK_TEST_BASE_URL }}
+          LIFELINK_TEST_CITIZEN_EMAIL: ${{ secrets.LIFELINK_TEST_CITIZEN_EMAIL }}
+          LIFELINK_TEST_CITIZEN_PASSWORD: ${{ secrets.LIFELINK_TEST_CITIZEN_PASSWORD }}
+          LIFELINK_TEST_POLICE_EMAIL: ${{ secrets.LIFELINK_TEST_POLICE_EMAIL }}
+          LIFELINK_TEST_POLICE_PASSWORD: ${{ secrets.LIFELINK_TEST_POLICE_PASSWORD }}
+          LIFELINK_TEST_RESPONDER_EMAIL: ${{ secrets.LIFELINK_TEST_RESPONDER_EMAIL }}
+          LIFELINK_TEST_RESPONDER_PASSWORD: ${{ secrets.LIFELINK_TEST_RESPONDER_PASSWORD }}
+        run: |
+          test -n "$LIFELINK_TEST_BASE_URL"
+          test -n "$LIFELINK_TEST_CITIZEN_EMAIL"
+          test -n "$LIFELINK_TEST_CITIZEN_PASSWORD"
+          test -n "$LIFELINK_TEST_POLICE_EMAIL"
+          test -n "$LIFELINK_TEST_POLICE_PASSWORD"
+          test -n "$LIFELINK_TEST_RESPONDER_EMAIL"
+          test -n "$LIFELINK_TEST_RESPONDER_PASSWORD"
+
+          flutter test integration_test/emergency_response_flow_test.dart \
+            --dart-define=LIFELINK_TEST_BASE_URL="$LIFELINK_TEST_BASE_URL" \
+            --dart-define=LIFELINK_TEST_CITIZEN_EMAIL="$LIFELINK_TEST_CITIZEN_EMAIL" \
+            --dart-define=LIFELINK_TEST_CITIZEN_PASSWORD="$LIFELINK_TEST_CITIZEN_PASSWORD" \
+            --dart-define=LIFELINK_TEST_POLICE_EMAIL="$LIFELINK_TEST_POLICE_EMAIL" \
+            --dart-define=LIFELINK_TEST_POLICE_PASSWORD="$LIFELINK_TEST_POLICE_PASSWORD" \
+            --dart-define=LIFELINK_TEST_RESPONDER_EMAIL="$LIFELINK_TEST_RESPONDER_EMAIL" \
+            --dart-define=LIFELINK_TEST_RESPONDER_PASSWORD="$LIFELINK_TEST_RESPONDER_PASSWORD"
